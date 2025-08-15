@@ -6,7 +6,11 @@ import { BaseMatcher, OriginMeta, Result } from "../platform";
 class MangaParkMatcher extends BaseMatcher<string> {
 
   async fetchChapters(): Promise<Chapter[]> {
-    const list = Array.from(document.querySelectorAll<HTMLAnchorElement>("div[data-name='chapter-list'] .flex-col > .px-2 > .space-x-1 > a"));
+    let list = Array.from(document.querySelectorAll<HTMLAnchorElement>("div[data-name='chapter-list'] .flex-col > .px-2 > .space-x-1 > a"));
+    if (list.length === 0) {
+      list = Array.from(document.querySelectorAll<HTMLAnchorElement>("div[data-name='chapter-list'] .flex-col-reverse > .px-2 > .space-x-1 > a"));
+      list = list.reverse();
+    }
     return list.map((elem, i) => new Chapter(i, elem.textContent ?? "Chapter" + (i + 1), elem.href));
   }
 
