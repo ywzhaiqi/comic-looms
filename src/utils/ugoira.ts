@@ -172,8 +172,10 @@ export class UgoiraPlayer {
   play() {
     if (!this.paused) return;
     this.paused = false;
-    const animate = this.createAnimate();
-    this.animationFrameID = window.requestAnimationFrame(animate);
+    this.frame0WHPromise.then(() => {
+      const animate = this.createAnimate();
+      this.animationFrameID = window.requestAnimationFrame(animate);
+    });
   }
 
   pause() {
@@ -196,7 +198,7 @@ export class UgoiraPlayer {
         if (this.index >= this.data.length) {
           this.index = 0;
         }
-        this.ctx!.clearRect(0, 0, this.wh!.width, this.wh!.height);
+        this.ctx!.clearRect(0, 0, this.wh?.width ?? 100, this.wh?.height ?? 100);
         this.ctx!.drawImage(frame.img, 0, 0);
       }
       if (!this.paused) {
