@@ -286,6 +286,10 @@ function confHealthCheck(cf: Config): Config {
     cf.imgNodeActions = [];
     changed = true;
   }
+  if (cf.filterTags && !(cf.filterTags instanceof Array)) {
+    cf.filterTags = [];
+    changed = true;
+  }
 
   const newCf = patchConfig(cf);
   if (newCf) {
