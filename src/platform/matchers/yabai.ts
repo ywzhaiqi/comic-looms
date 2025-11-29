@@ -19,7 +19,7 @@ class YabaiMatcher extends BaseMatcher<YabaiList> {
       const list = data.props?.pages?.data as YabaiList;
       yield Result.ok(list);
     } else {
-      throw new Error("cannot fetch pages");
+      throw new Error("cannot fetch pages" + " " + (data?.message ?? ""));
     }
   }
 
@@ -78,7 +78,7 @@ class YabaiMatcher extends BaseMatcher<YabaiList> {
   }
 
   async query(url: string, body?: string) {
-    const csrf = document.cookie.match(/XSRF-TOKEN=(.*)?;?/)?.[1];
+    const csrf = document.cookie.match(/XSRF-TOKEN=([^;]+);?/)?.[1];
     if (!csrf) throw new Error("cannot get csrf token form cookie");
     const res = await window.fetch(url, {
       "headers": {
