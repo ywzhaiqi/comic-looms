@@ -1,4 +1,4 @@
-import { KeyboardInBigImageModeId, KeyboardInFullViewGridId, KeyboardInMainId } from '../ui/event';
+import { AppEventIDInBigImgFrame, AppEventIDInFullViewGrid, AppEventIDInMain } from '../ui/event';
 
 
 const getI18nIndex = (lang: string) => {
@@ -91,16 +91,28 @@ const i18nData = {
     'Esta opción solo es efectiva cuando el diseño de la lista de miniaturas es adaptable. La altura de referencia por fila, junto con el número de imágenes por fila, influye en el efecto final de la visualización.'
   ],
   threads: [
-    'Preload Threads',
-    '最大同时加载',
+    'Browse Threads',
+    '最大浏览时加载',
     '동시 로드 수',
-    'Hilos de pre-carga'
+    'Hilos de navegación'
   ],
   threadsTooltip: [
     'Max Preload Threads',
     '大图浏览时，每次滚动到下一张时，预加载的图片数量，大于1时体现为越看加载的图片越多，将提升浏览体验。',
     '큰 이미지 모드에서 다음 이미지로 이동할 때 미리 로드할 이미지 수입니다.<br>이 값이 1보다 클 경우, 동시에 로드되는 이미지가 더 많아져서 사용 경험이 향상됩니다.',
     'Hilos máximos de pre-carga'
+  ],
+  maxIdleThreads: [
+    'Idle Threads',
+    '最大空闲时加载',
+    '유휴 로드 수',
+    'Hilos inactivos'
+  ],
+  maxIdleThreadsTooltip: [
+    'Maximum number of images to load simultaneously when idle.',
+    '空闲时同时加载的最大图片数量。',
+    '유휴 상태에서 동시에 로드할 최대 이미지 수입니다.',
+    'Número máximo de imágenes para cargar simultáneamente cuando está inactivo.',
   ],
   downloadThreads: [
     'Download Threads',
@@ -167,6 +179,18 @@ const i18nData = {
     '非浏览器原生的滚动时（按键滚动、横向滚动），每次滚动的距离。',
     '비기본 스크롤(사용자 정의 키보드 스크롤, 가로 스크롤) 중 각 스크롤의 거리입니다.',
     'Durante el desplazamiento no nativo (desplazamiento con teclado personalizado, desplazamiento horizontal), la distancia de cada desplazamiento.'
+  ],
+  smartScrolling: [
+    "Smart Scrolling",
+    "智能滚动",
+    "스마트 스크롤",
+    "Desplazamiento inteligente",
+  ],
+  smartScrollingTooltip: [
+    "When enabled, horizontal scrolling will occur when needed without pressing the shift key. (This is not native scrolling, so the experience may be poor in some cases.)",
+    "启用此项后，会在需要时进行横向滚动，而无需按下shift键。(这不是浏览器原生的滚动，因此在某些情况下体验不佳。)",
+    "이 옵션을 활성화하면 shift 키를 누르지 않고도 필요한 경우 가로 스크롤이 발생합니다. (이는 브라우저의 기본 스크롤이 아니므로, 일부 경우에는 경험이 좋지 않을 수 있습니다.)",
+    "Cuando está habilitado, se producirá un desplazamiento horizontal cuando sea necesario sin presionar la tecla shift. (Esto no es un desplazamiento nativo, por lo que la experiencia puede ser pobre en algunos casos.)",
   ],
   scrollingSpeed: [
     'Scrolling Speed',
@@ -356,13 +380,13 @@ pero desactivará la lupa y la capacidad de arrastrar y mover imágenes.`,
     '아티스트의 작품을 오름차순으로 정렬합니다. 오래된 것부터 최신 순으로. (need refresh)',
     'Ordena las obras del artista en orden ascendente, de las más antiguas a las más recientes. (need refresh)'
   ],
-  pixivImageServer: [
-    'Pixiv Img Server',
+  pixivMirrorHost: [
+    'Pixiv Image Host',
     'Pixiv 图片服务器',
     'Pixiv 이미지 서버',
-    'Pixiv Img Server',
+    'Pixiv Image Host',
   ],
-  pixivImageServerTooltip: [
+  pixivMirrorHostTooltip: [
     'Replace Pixiv’s default image server i.pximg.net with the proxy server you specify, such as i.pixiv.re, to achieve better loading speeds',
     '将Pixiv默认的图片服务器 i.pximg.net 替换为你所指定的代理服务器，如： i.pixiv.re，以获得更佳的加载速度。',
     'Pixiv의 기본 이미지 서버 i.pximg.net을(를) 지정한 프록시 서버(예: i.pixiv.re)로 교체하여 더 빠른 로딩 속도를 얻으세요.',
@@ -446,6 +470,18 @@ pero desactivará la lupa y la capacidad de arrastrar y mover imágenes.`,
     '许多图库都同时拥有英文/罗马音标题和日文标题，<br>您希望下载时哪个作为文件名？',
     '많은 갤러리가 영어/로마자 제목과 일본어 제목을 모두 가지고 있습니다. <br>어떤 것을 아카이브 파일 이름으로 사용할지 선택할 수 있습니다.',
     'Muchas galerías tienen tanto un título en inglés/romanizado como un título en script japonés.<br>¿Cuál quieres usar como nombre de archivo?'
+  ],
+  ehentaiMirrorHost: [
+    'E-hentai Mirror Server',
+    'E-hentai 镜像服务器',
+    'E-hentai 미러 서버',
+    'Servidor espejo de E-hentai',
+  ],
+  ehentaiMirrorHostTooltip: [
+    'Use a third-party mirror server in the form of https://xxx.xx. This will bypass e-hentai.org’s quota calculation and reduce quotas usage. Note that mirror servers may not support original image downloads.',
+    '使用第三方的镜像服务器，格式为 https://xxx.xx，这会绕过e-hentai.org本站的额度计算，为你节省额度的使用。但镜像站可能不支持原图下载，请酌情使用。',
+    'https://xxx.xx 형식의 타사 미러 서버를 사용하세요. 이는 e-hentai.org의 쿼터 계산을 우회하여 쿼터 사용량을 줄이는 데 도움이 됩니다. 단, 미러 서버는 원본 이미지 다운로드를 지원하지 않을 수 있습니다.',
+    'Utilice un servidor espejo de terceros en el formato https://xxx.xx. Esto omitirá el cálculo de cuota de e-hentai.org y ayudará a reducir el uso de la cuota. Tenga en cuenta que los servidores espejo pueden no admitir la descarga de imágenes originales.',
   ],
   reverseMultipleImagesPost: [
     'Descending Images In Post',
@@ -783,7 +819,12 @@ pero desactivará la lupa y la capacidad de arrastrar y mover imágenes.`,
     "현재 페이지의 아트워크",
     "Obra de arte en la página actual",
   ],
-
+  contextMenuTooltip: [
+    "The native context menu can still be accessed with Shift + Right Click.",
+    "你仍能通过Shift+右键打开原始菜单",
+    "Shift + 마우스 오른쪽 버튼으로 기본 컨텍스트 메뉴에 여전히 접근할 수 있습니다.",
+    "El menú contextual nativo aún puede accederse con Shift + Clic Derecho.",
+  ],
   help: [
     `
 <h2>[How to Use? Where is the Entry?]</h2>
@@ -1110,12 +1151,18 @@ Reporta problemas aquí: <a target='_blank' href='https://github.com/MapoMagpie/
 } satisfies Record<string, Langs>;
 type I18nKeys = keyof (typeof i18nData);
 
-const kbInFullViewGridData: Record<KeyboardInFullViewGridId | KeyboardInBigImageModeId | KeyboardInMainId, Langs> = {
+const kbInFullViewGridData: Record<AppEventIDInFullViewGrid | AppEventIDInBigImgFrame | AppEventIDInMain, Langs> = {
   'open-full-view-grid': [
     'Enter Read Mode',
     '进入阅读模式',
     '읽기 모드 시작',
     'Entrar en modo de lectura'
+  ],
+  'open-in-new-tab': [
+    'Open In New Tab',
+    '在新标签页打开',
+    '새 탭에서 열기',
+    'Abrir en nueva pestaña'
   ],
   'start-download': [
     'Start Download',
@@ -1263,10 +1310,34 @@ const kbInFullViewGridData: Record<KeyboardInFullViewGridId | KeyboardInBigImage
   ],
   'resize-flow-vision': [
     'Resize Thumbnail Grid Layout',
-    'Resize Thumbnail Grid Layout',
-    'Resize Thumbnail Grid Layout',
-    'Resize Thumbnail Grid Layout'
+    '重新排布缩略图网格',
+    '썸네일 격자 레이아웃 크기 조정',
+    'Redimensionar diseño de cuadrícula de miniaturas',
   ],
+  'cherry-pick-select': [
+    'Cherry Pick This Image',
+    '选择此图片',
+    '이 이미지 체리 픽',
+    'Seleccionar Esta Imagen'
+  ],
+  'cherry-pick-select-range': [
+    'Cherry Pick Images',
+    '选择图片们',
+    '이미지 체리 픽',
+    'Seleccionar Imágenes'
+  ],
+  'cherry-pick-exclude': [
+    'Exclude This Image',
+    '排除此图片',
+    '이 이미지 제외',
+    'Excluir Esta Imagen'
+  ],
+  'cherry-pick-exclude-range': [
+    'Exclude Images',
+    '排除图片们',
+    '이미지 제외',
+    'Excluir Imágenes'
+  ]
 };
 
 // type KBInMainKeys = keyof (typeof kbInMainData);
@@ -1284,6 +1355,6 @@ function convert<T extends string>(data: Record<T, Langs>): Record<T, I18nValue>
 
 export const i18n = {
   ...(convert<I18nKeys>(i18nData)),
-  keyboard: convert<KeyboardInFullViewGridId | KeyboardInBigImageModeId | KeyboardInMainId>(kbInFullViewGridData),
+  keyboard: convert<AppEventIDInFullViewGrid | AppEventIDInBigImgFrame | AppEventIDInMain>(kbInFullViewGridData),
 
 };

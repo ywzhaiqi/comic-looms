@@ -136,6 +136,23 @@ export class FullViewGridManager {
       evLog("error", "render curr view error, range: ", `[${start}-${end}]`);
     }
   }
+  mouseOn(x: number, y: number): HTMLElement | undefined {
+    const [se, ee] = this.layout.visibleRange(this.root, this.queue.map(e => e.element));
+    let [start, end] = [parseInt(se.getAttribute("data-index") ?? "-1"), parseInt(ee.getAttribute("data-index") ?? "-1")];
+    if (start > -1) {
+      const found = this.queue.slice(start, end + 1).find(e => {
+        const rect = e.element.getBoundingClientRect();
+        if (rect.x < x && (rect.x + rect.width) > x) {
+          if (rect.y < y && (rect.y + rect.height) > y) {
+            return true;
+          }
+        }
+        return false;
+      });
+      return found?.element;
+    }
+    return undefined;
+  }
 }
 
 class GRIDLayout extends Layout {

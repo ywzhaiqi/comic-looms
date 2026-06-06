@@ -1,12 +1,22 @@
 import { GalleryMeta } from "../../download/gallery-meta";
+import { IMGFetcher } from "../../img-fetcher";
 import ImageNode from "../../img-node";
 import { Chapter } from "../../page-fetcher";
 import { evLog } from "../../utils/ev-log";
-import { ADAPTER } from "../adapt";
 import { BaseMatcher, OriginMeta, Result } from "../platform";
 
-class BatotoMatcher extends BaseMatcher<Document> {
+// @ts-ignore
+class BatotoMatcher extends BaseMatcher<string> {
+
   meta?: GalleryMeta;
+  preferServer: { server: string, done: number }[] = [];
+
+  constructor() {
+    super();
+    const ls = window.localStorage.getItem("prefer-services");
+    this.preferServer = ls ? JSON.parse(ls) : [];
+  }
+
   galleryMeta(): GalleryMeta {
     if (this.meta) return this.meta;
     const meta = new GalleryMeta(window.location.href, "");
@@ -34,10 +44,20 @@ class BatotoMatcher extends BaseMatcher<Document> {
   }
 
   async *fetchChapters(): AsyncGenerator<Chapter[]> {
-    let elements = Array.from(document.querySelectorAll<HTMLDivElement>("div[name=chapter-list] .scrollable-panel .flex-col-reverse astro-slot > div"));
-    elements = elements.reverse();
+    const listElem = document.querySelector<HTMLDivElement>("div[data-name=chapter-list] .scrollable-bar .group");
+    let elements = Array.from(listElem?.querySelectorAll<HTMLDivElement>(":scope > div") ?? []);
+    if (listElem?.classList.contains("flex-col-reverse")) {
+      elements = elements.reverse();
+    }
     if (elements.length === 0) {
-      elements = Array.from(document.querySelectorAll<HTMLDivElement>("div[name=chapter-list] .scrollable-panel .flex-col astro-slot > div"));
+      // const comicId = window.location.href.match(/title\/(\d+).*/)?.[1];
+      // if (comicId) {
+      //   const data = window.fetch(`${window.location.origin}/ap2`, {
+      //     "body": `{"query":"query get_comic_chapterList($comicId: ID!, $start: Int) {\n    get_comic_chapterList(comicId: $comicId, start: $start){\n      id data {\n        \n  id\n  dname\n  title\n  urlPath\n\n      }\n    }\n  }", "variables": {"comicId": "${comicId}", "start": -1}}`,
+      //   }).then(resp => resp.json()).catch(Error);
+      //   if (data instanceof Error) throw data;
+      // } TODO
+      throw new Error("cannot find chapters, the page has been updated");
     }
     return elements.map((elem, i) => {
       const a = elem.querySelector<HTMLAnchorElement>("div:first-child > a");
@@ -46,44 +66,88 @@ class BatotoMatcher extends BaseMatcher<Document> {
     });
   }
 
-  async *fetchPagesSource(chapter: Chapter): AsyncGenerator<Result<Document>> {
+  async *fetchPagesSource(chapter: Chapter): AsyncGenerator<Result<string>> {
     const url = new URL(chapter.source);
     url.searchParams.set("load", "2");
-    const doc = await window.fetch(url).then(resp => resp.text()).then(text => new DOMParser().parseFromString(text, "text/html")).catch(Error);
-    if (doc instanceof Error) throw doc;
-    yield Result.ok(doc);
+    yield Result.ok(url.href);
   }
 
-  async parseImgNodes(doc: Document): Promise<ImageNode[]> {
-    const raw = doc.querySelector("astro-island[component-url^='/_astro/ImageList'][props]")?.getAttribute("props");
-    if (!raw) throw new Error("cannot find ImageList props");
-    const json1 = JSON.parse(raw);
-    if (!json1.imageFiles?.[1]) throw new Error("cannot find imageFiles from ImageList props");
-    const images = JSON.parse(json1.imageFiles[1]) as [number, string][];
-    if (!images.length || images.length === 0) throw new Error("cannot find images");
-    const digits = images.length.toString().length;
-    return images.map(([_, url], i) => {
+  async parseImgNodes(href: string): Promise<ImageNode[]> {
+    const doc = await window.fetch(href).then(resp => resp.text()).then(text => new DOMParser().parseFromString(text, "text/html")).catch(Error);
+    if (doc instanceof Error) throw doc;
+    const elements = Array.from(doc.querySelectorAll<HTMLDivElement>("div[data-name=image-show]"));
+    // const raw = doc.querySelector("astro-island[component-url^='/_astro/ImageList'][props]")?.getAttribute("props");
+    if (elements.length === 0) throw new Error("cannot find images");
+    const nodes: ImageNode[] = [];
+    const digits = elements.length.toString().length;
+    for (let i = 0; i < elements.length; i++) {
+      const elem = elements[i];
       const title = (i + 1).toString().padStart(digits, "0");
+      const url = elem.querySelector<HTMLImageElement>("img")?.src;
+      if (!url) throw new Error("cannot get image src");
       const ext = url.split(".").pop() ?? "webp";
       let wh = undefined;
-      const matches = url.match(/\/\d+_(\d+)_(\d+)_\d+\.\w+$/);
-      if (matches && matches.length === 3) {
-        wh = { w: parseInt(matches[1]), h: parseInt(matches[2]) };
+      if (elem.style.height && elem.style.width) {
+        wh = { w: parseInt(elem.style.width), h: parseInt(elem.style.height) };
       }
-      return new ImageNode("", i + 1 + "", `${title}.${ext}`, undefined, url, wh);
-    })
+      nodes.push(new ImageNode("", href, `${title}.${ext}`, undefined, url, wh));
+    }
+    return nodes;
   }
 
   async fetchOriginMeta(node: ImageNode): Promise<OriginMeta> {
     return { url: node.originSrc! };
   }
 
+  async fetchImageData(imf: IMGFetcher): Promise<[Blob, number] | null> {
+    let ret = await super.fetchImageData(imf).catch(Error);
+    const url = new URL(imf.node.originSrc!);
+    if (ret === null || ret instanceof Error || ret?.[0].type.startsWith("text")) { // server down
+      this.updatePerferServer(url.host, true);
+      evLog("info", "server down, try other servers", this.preferServer);
+      for (const server of this.preferServer) {
+        url.host = server.server;
+        imf.node.originSrc = url.href;
+        ret = await super.fetchImageData(imf);
+        if (ret?.[0].type.startsWith("image")) {
+          break;
+        };
+        this.updatePerferServer(url.host, true);
+      }
+    }
+    if (ret instanceof Error) throw ret;
+    if (ret?.[0].type.startsWith("image")) {
+      this.updatePerferServer(url.host);
+    }
+    return ret;
+  }
+
+  updatePerferServer(server: string, failed?: boolean) {
+    const found = this.preferServer.findIndex(v => v.server === server);
+    let changed = false;
+    if (found > -1) {
+      this.preferServer[found].done = Math.min(20, (this.preferServer[found].done + (failed ? -1 : 1)));
+      changed = true;
+    } else if (!failed) {
+      this.preferServer.push({ server: server, done: 1 });
+      changed = true;
+    }
+    if (changed) {
+      this.preferServer = this.preferServer.sort((a, b) => {
+        if (a.done === b.done) return Math.random() - 0.5;
+        return b.done - a.done;
+      });
+      this.preferServer = this.preferServer.slice(0, 30);
+      window.localStorage.setItem("prefer-services", JSON.stringify(this.preferServer));
+    }
+  }
+
 }
-ADAPTER.addSetup({
-  name: "BATO.TO v3x",
-  workURLs: [
-    /(mangatoto.com|bato.to)\/title\/\d+[^\/]*$/
-  ],
-  match: ["https://mangatoto.com/*", "https://bato.to/*"],
-  constructor: () => new BatotoMatcher(),
-});
+// ADAPTER.addSetup({
+//   name: "BATO.TO v3x",
+//   workURLs: [
+//     /(mangatoto.com|bato.(to|si|ing))\/title\/\d+[^\/]*$/
+//   ],
+//   match: ["https://mangatoto.com/*", "https://bato.to/*"],
+//   constructor: () => new BatotoMatcher(),
+// });

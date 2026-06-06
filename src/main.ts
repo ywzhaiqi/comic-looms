@@ -15,6 +15,7 @@ import revertMonkeyPatch from "./utils/revert-monkey-patch";
 import { sleep } from "./utils/sleep";
 import { evLog } from "./utils/ev-log";
 import { Filter } from "./filter";
+import { ContextMenu } from "./ui/context-menu";
 
 // Dynamically import the modules under ./platform/matchers, in which ADAPTER.addSetup will be executed
 const modules = import.meta.glob('./platform/matchers/*.ts', { eager: true });
@@ -37,10 +38,11 @@ function setup(): DestoryFunc {
   // UI Manager
   const PH: PageHelper = new PageHelper(HTML, () => PF.chapters, () => DL.downloading);
   const BIFM: BigImageFrameManager = new BigImageFrameManager(HTML, (index) => PF.chapters[index]);
-  new FullViewGridManager(HTML, BIFM);
+  const FVGM: FullViewGridManager = new FullViewGridManager(HTML, BIFM);
 
-  const events = initEvents(HTML, BIFM, IFQ, IL, PH);
+  const events = initEvents(HTML, BIFM, FVGM, IFQ, IL, PH);
   addEventListeners(events, HTML, BIFM, DL, PH);
+  new ContextMenu(HTML, FVGM, events.appEvents);
 
   EBUS.subscribe("downloader-canvas-on-click", (index) => {
     IFQ.currIndex = index;
@@ -52,7 +54,12 @@ function setup(): DestoryFunc {
   PF.beforeInit = () => HTML.pageLoading.style.display = "flex";
   PF.afterInit = () => {
     HTML.pageLoading.style.display = "none";
-    IL.processingIndexList = [0];
+    const idleThreads = ADAPTER.conf.maxIdleThreads;
+    IL.processingIndexList = [];
+    for (let i = 0; i < idleThreads && i < PF.queue.length; i++) {
+      IL.processingIndexList.push(i);
+    }
+    evLog("info", `start idle fetch with ${idleThreads} threads, total queue length ${PF.queue.length}`);
     IL.start();
     if (ADAPTER.conf.autoEnterBig || BIFM.visible) {
       const imf = IFQ[BIFM.getPageNumber()];

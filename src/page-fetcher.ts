@@ -1,7 +1,7 @@
 import { GalleryMeta } from "./download/gallery-meta";
 import EBUS from "./event-bus";
 import { IMGFetcherQueue } from "./fetcher-queue";
-import { Filter } from "./filter";
+import { Filter, } from "./filter";
 import { IMGFetcher } from "./img-fetcher";
 import ImageNode, { NodeAction } from "./img-node";
 import { ADAPTER } from "./platform/adapt";
@@ -90,7 +90,7 @@ export class PageFetcher {
     EBUS.subscribe("filter-update-all-tags", async () => {
       const chapter = this.chapters[this.chapterIndex];
       const set = new Set<string>();
-      chapter.filteredQueue.forEach(imf => imf.node.tags.forEach(t => set.add(t)));
+      chapter.filteredQueue.forEach(imf => imf.node.tags.forEach(t => set.add(t.toString())));
       this.filter.allTags = set;
     });
   }
@@ -126,7 +126,7 @@ export class PageFetcher {
     // Image Actions, It is an experimental feature.
     try {
       if (ADAPTER.conf.imgNodeActions.length > 0) {
-        const AsyncFunction = async function() { }.constructor;
+        const AsyncFunction = async function () { }.constructor;
         this.nodeActionDesc = ADAPTER.conf.imgNodeActions.filter(a => {
           // if workon is empty, means work on all site.
           if (!a.workon) return true;
@@ -152,8 +152,8 @@ export class PageFetcher {
         const chapters = await chaptersIter.next();
         if (chapters.value) {
           this.appendNewChapters_(chapters.value, first);
+          // afterInit will be called in changeToChapter
           if (first) {
-            this.afterInit?.();
             if (this.chapters.length === 1) {
               this.changeToChapter(0);
             }
@@ -181,7 +181,7 @@ export class PageFetcher {
 
     if (!this.queue.downloading?.()) {
       this.beforeInit?.();
-      this.restoreChapter(index).then(this.afterInit).catch(this.onFailed);
+      this.restoreChapter(index).catch(this.onFailed).finally(this.afterInit);
     }
   }
 

@@ -1,8 +1,11 @@
 import { GalleryMeta } from "../../download/gallery-meta";
+import { IMGFetcher } from "../../img-fetcher";
 import ImageNode from "../../img-node";
 import { Chapter } from "../../page-fetcher";
 import { evLog } from "../../utils/ev-log";
+import { simpleFetch } from "../../utils/query";
 import { parseImagePositions, splitImagesFromUrl } from "../../utils/sprite-split";
+import { replaceHost } from "../../utils/url";
 import { ADAPTER } from "../adapt";
 import { BaseMatcher, OriginMeta, Result, } from "../platform";
 
@@ -11,7 +14,7 @@ const regulars = {
   /** 有压缩的大图地址 */
   normal: /\<img\sid=\"img\"\ssrc=\"(.*?)\"\sstyle/,
   /** 原图地址 */
-  original: /\<a\shref=\"(http[s]?:\/\/e[x-]?hentai(55ld2wyap5juskbm67czulomrouspdacjamjeloj7ugjbsad)?\.(org|onion)\/fullimg?[^"\\]*)\"\>/,
+  original: /\<a href=\"((https?:\/\/[^\/]*)?\/fullimg[^"\\]*)\"\>/,
   /** 大图重载地址 */
   nlValue: /\<a\shref=\"\#\"\sid=\"loadfail\"\sonclick=\"return\snl\(\'(.*)\'\)\"\>/,
   /** 是否开启自动多页查看器 */
@@ -133,8 +136,22 @@ class EHMatcher extends BaseMatcher<string> {
   async parseImgNodes(source: string): Promise<ImageNode[] | never> {
     const list: ImageNode[] = [];
     const doc = await window.fetch(source).then((response) => response.text()).then(text => new DOMParser().parseFromString(text, "text/html"));
+    // let doc: Document | undefined;
+    // if (ADAPTER.conf.ehentaiMirrorHost) {
+    //   const url = replaceHost(source, ADAPTER.conf.ehentaiMirrorHost);
+    //   doc = await simpleFetch(url, "text").then(raw => new DOMParser().parseFromString(raw, "text/html"));
+    // } else {
+    //   doc = await window.fetch(source).then((response) => response.text()).then(text => new DOMParser().parseFromString(text, "text/html"));
+    // }
     if (!doc) {
       throw new Error("warn: eh matcher failed to get document from source page!")
+    }
+    const getHref = (href: string) => {
+      if (href.startsWith("/")) href = window.location.origin + href;
+      if (ADAPTER.conf.ehentaiMirrorHost) {
+        href = replaceHost(href, ADAPTER.conf.ehentaiMirrorHost);
+      }
+      return href;
     }
     let isSprite = false;
     let getNodeInfo: GetNodeInfo = (node) => {
@@ -144,7 +161,7 @@ class EHMatcher extends BaseMatcher<string> {
       const ret: NodeInfo = {
         thumbnailImage: image.src,
         title,
-        href: anchor.getAttribute("href")!,
+        href: getHref(anchor.href),
         wh: extractRectFromSrc(image.src) || { w: 100, h: 100 },
         style: node.style,
         backgroundImage: null,
@@ -164,7 +181,7 @@ class EHMatcher extends BaseMatcher<string> {
         const ret: NodeInfo = {
           backgroundImage,
           title,
-          href: anchor.getAttribute("href")!,
+          href: getHref(anchor.href),
           wh: extractRectFromStyle(node.style) ?? { w: 100, h: 100 },
           style: node.style,
           thumbnailImage: "",
@@ -187,7 +204,7 @@ class EHMatcher extends BaseMatcher<string> {
         const ret: NodeInfo = {
           backgroundImage,
           title,
-          href: anchor.getAttribute("href")!,
+          href: getHref(anchor.href),
           wh: extractRectFromStyle(div.style) ?? { w: 100, h: 100 },
           style: div.style,
           thumbnailImage: "",
@@ -218,7 +235,7 @@ class EHMatcher extends BaseMatcher<string> {
         const ni = {
           backgroundImage,
           title: info.n,
-          href: `${location.origin}/s/${info.k}/${gid}-${i + 1}`,
+          href: `${(ADAPTER.conf.ehentaiMirrorHost || window.location.origin)}/s/${info.k}/${gid}-${i + 1}`,
           wh: extractRectFromStyle(thumbnails[i].style) ?? { w: 100, h: 100 },
           style: thumbnails[i].style,
           thumbnailImage: "",
@@ -304,7 +321,15 @@ class EHMatcher extends BaseMatcher<string> {
   }
 
   async fetchOriginMeta(node: ImageNode, retry: boolean): Promise<OriginMeta> {
-    const text: string | Error = await window.fetch(node.href).then(resp => resp.text()).catch(reason => new Error(reason));
+    if (node.href.startsWith("/")) node.href = window.location.origin + node.href;
+    let text: string | Error | undefined;
+    if (ADAPTER.conf.ehentaiMirrorHost) {
+      node.href = replaceHost(node.href, ADAPTER.conf.ehentaiMirrorHost);
+      text = await simpleFetch(node.href, "text").catch(Error);
+    } else {
+      text = await window.fetch(node.href).then(resp => resp.text()).catch(Error);
+    }
+
     if (text instanceof Error || !text) throw new Error(`fetch source page error, ${text.toString()}`);
 
     // TODO: Your IP address has been temporarily banned for excessive pageloads which indicates that you are using automated mirroring/harvesting software. The ban expires in 2 days and 23 hours
@@ -337,26 +362,43 @@ class EHMatcher extends BaseMatcher<string> {
     }
     // check src has host prefix
     if (!src.startsWith("http")) {
-      src = window.location.origin + src;
+      src = (ADAPTER.conf.ehentaiMirrorHost || window.location.origin) + src;
     }
     if (src.endsWith("509.gif")) {
       throw new Error("509, Image limits Exceeded, Please reset your Quota!");
     }
-    return { url: src, href: node.href };
+    // fix file extension
+    let title = node.title;
+    const titleSP = title.split(".");
+    const srcSP = src.split(".");
+    if (titleSP.length > 1 && srcSP.length > 1) {
+      titleSP[titleSP.length - 1] = srcSP.pop()!;
+      title = titleSP.join(".");
+    }
+    title = title.replace(/\?nl=.*$/, "");
+    return { url: src, href: node.href, title, };
   }
 
-  async processData(data: Uint8Array<ArrayBuffer>, contentType: string): Promise<[Uint8Array<ArrayBuffer>, string]> {
-    if (contentType.startsWith("text")) {
-      if (data.byteLength === 1329) {
+  async fetchImageData(imf: IMGFetcher): Promise<[Blob, number] | null> {
+    const ret = await super.fetchImageData(imf).catch(Error);
+    if (ret === null) throw new Error("fetch image failed, got null");
+    if (ret instanceof Error) throw ret;
+    const [data, status] = ret;
+    if (data.type.startsWith("text")) {
+      if (data.size === 1329) {
         throw new Error("Downloading original images requires being logged in, please try logging in or disable \"raw image\"");
       }
-      const str = new TextDecoder().decode(data);
-      if (str && str.startsWith("Downloading original files of this gallery requires GP")) {
+      const str = new TextDecoder().decode(await data.arrayBuffer());
+      if (str && str.startsWith("Downloading original")) {
         throw new Error(str.trim());
       }
     }
-    return [data, contentType];
+    if (data.size === 0 && (status < 200 || status >= 400)) {
+      throw new Error(`status ${status}` + (ADAPTER.conf.ehentaiMirrorHost ? `, This mirror site [${ADAPTER.conf.ehentaiMirrorHost}] may not support downloading the original image.` : ""));
+    }
+    return ret;
   }
+
 }
 
 function extractRectFromSrc(src?: string): { w: number, h: number } | undefined {

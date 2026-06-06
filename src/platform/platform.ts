@@ -1,6 +1,12 @@
 import { GalleryMeta } from "../download/gallery-meta";
+import { IMGFetcher } from "../img-fetcher";
 import ImageNode from "../img-node";
 import { Chapter } from "../page-fetcher";
+import { Debouncer } from "../utils/debouncer";
+import { evLog } from "../utils/ev-log";
+import { i18n } from "../utils/i18n";
+import { xhrWapper } from "../utils/query";
+import { ADAPTER } from "./adapt";
 
 
 export type OriginMeta = {
@@ -73,6 +79,8 @@ export interface Matcher<P> {
    */
   fetchOriginMeta(node: ImageNode, retry: boolean, chapterID?: number): Promise<OriginMeta>;
 
+  fetchImageData(imf: IMGFetcher): Promise<[Blob, number] | null>;
+
   galleryMeta(chapter: Chapter): GalleryMeta;
   title(chapter: Chapter[]): string;
 
@@ -114,6 +122,55 @@ export abstract class BaseMatcher<P> implements Matcher<P> {
   abstract fetchPagesSource(source: Chapter): AsyncGenerator<Result<P>, Result<P>, Result<P>>;
   abstract parseImgNodes(pageSource: P, chapterID?: number): Promise<ImageNode[]>;
   abstract fetchOriginMeta(node: ImageNode, retry: boolean, chapterID?: number): Promise<OriginMeta>;
+
+  async fetchImageData(imf: IMGFetcher): Promise<[Blob, number] | null> {
+    if (imf.node.originSrc?.startsWith("blob:")) {
+      return await fetch(imf.node.originSrc).then(resp => resp.blob().then(b => [b, 200]));
+    }
+    return new Promise(async (resolve, reject) => {
+      const debouncer = new Debouncer();
+      const timeout = () => {
+        debouncer.addEvent("XHR_TIMEOUT", () => {
+          imf.abort();
+          reject(new Error("timeout"));
+        }, ADAPTER.conf.timeout * 1000);
+      };
+      try {
+        imf.abortSignal = xhrWapper(imf.node.originSrc!, "blob", {
+          onload: function(response) {
+            const data = response.response;
+            try {
+              imf.setDownloadState({ readyState: response.readyState });
+            } catch (error) {
+              evLog("error", "warn: fetch big image data onload setDownloadState error:", error);
+            }
+            imf.abortSignal = undefined;
+            resolve([data, response.status]);
+          },
+          onerror: function(response) {
+            imf.abortSignal = undefined;
+            // "Refused to connect to "https://ba.hitomi.la/avif/123/456/789.avif": URL is not permitted"
+            if (response.status === 0) {
+              const domain = response.error.match(/(https?:\/\/.*?)\/.*/)?.[1] ?? "";
+              reject(new Error(i18n.failFetchReason1.get().replace("{{domain}}", domain)));
+            } else {
+              reject(new Error(`response status:${response.status}, error:${response.error}, response:${response.response}`));
+            }
+          },
+          onprogress: function(response) {
+            imf.setDownloadState({ total: response.total, loaded: response.loaded, readyState: response.readyState });
+            timeout();
+          },
+          onloadstart: function() {
+            imf.setDownloadState(imf.downloadState);
+          }
+        }, imf.matcher.headers(imf.node));
+        timeout();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
 
   title(chapter: Chapter[]): string {
     const meta = this.galleryMeta(chapter[0]);

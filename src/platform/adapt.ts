@@ -1,4 +1,4 @@
-import { Config, getConf, getSiteConfig } from "../config";
+import { Config, getConf, getSiteConfig, SiteConfig } from "../config";
 import { Matcher } from "./platform";
 
 export type MatcherSetup = {
@@ -16,6 +16,7 @@ export class Adapter {
   matcher?: MatcherSetup;
   conf: Config & { selectedSiteNameConfig?: string };
   globalConf: Config;
+  siteConf?: SiteConfig;
 
   constructor() {
     this.ready = new Promise<MatcherSetup>((resolve, _reject) => this.resolve = resolve);
@@ -36,6 +37,7 @@ export class Adapter {
     }
     if (workURLs.find(regex => regex.test(window.location.href))) {
       this.conf = { ...this.conf, ...siteConf };
+      this.siteConf = siteConf;
       this.matcher = setup;
       this.resolve?.(setup);
       return true;

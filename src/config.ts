@@ -1,5 +1,5 @@
 import { GM_getValue, GM_setValue } from "$";
-import { KeyboardInBigImageModeId, KeyboardInFullViewGridId, KeyboardInMainId } from "./ui/event";
+import { AppEventIDInBigImgFrame, AppEventIDInFullViewGrid, AppEventIDInMain } from "./ui/event";
 import { i18n } from "./utils/i18n";
 import { b64EncodeUnicode, uuid } from "./utils/random";
 
@@ -34,9 +34,11 @@ export type Config = {
   fetchOriginal: boolean,
   /** 中止空闲加载器后的重新启动时间 */
   restartIdleLoader: number,
-  /** 同时加载的图片数量 */
+  /** 最大空闲时加载线程数 */
+  maxIdleThreads: number,
+  /** 最大浏览时加载线程数 */
   threads: number,
-  /** 同时下载的图片数量 */
+  /** 最大下载时加载线程数 */
   downloadThreads: number,
   /** 超时时间(秒)，默认16秒 */
   timeout: number,
@@ -72,16 +74,16 @@ export type Config = {
   preventScrollPageTime: number
   /** 下载文件分卷大小，单位Mib */
   archiveVolumeSize: number
-  pixivImageServer?: string
+  pixivMirrorHost: string
   /** 自动收起控制面板 */
   autoCollapsePanel: boolean,
   /** 最小化控制栏 */
   minifyPageHelper: "always" | "inBigMode" | "never",
   /** 键盘自定义 */
   keyboards: {
-    inBigImageMode: { [key in KeyboardInBigImageModeId]?: string[] },
-    inFullViewGrid: { [key in KeyboardInFullViewGridId]?: string[] },
-    inMain: { [key in KeyboardInMainId]?: string[] },
+    inBigImageMode: { [key in AppEventIDInBigImgFrame]?: string[] },
+    inFullViewGrid: { [key in AppEventIDInFullViewGrid]?: string[] },
+    inMain: { [key in AppEventIDInMain]?: string[] },
   },
   /** Is video muted? */
   muted?: boolean,
@@ -97,10 +99,13 @@ export type Config = {
   reverseMultipleImagesPost: boolean,
   /** Many galleries have both an English/Romanized title and a title in Japanese script. Which gallery name would you like as archive filename?  */
   ehentaiTitlePrefer: "english" | "japanese",
+  ehentaiMirrorHost: string,
   /** Custom key scrolling delta */
   scrollingDelta: number,
   /** Custom key scrolling speed */
   scrollingSpeed: number,
+  /** Custom key scrolling enable/disable */
+  smartScrolling: boolean,
   id: string,
   /** modify some config items by patch */
   configPatchVersion: number,
@@ -145,6 +150,7 @@ export function defaultConf(): Config {
     autoLoad: true,
     fetchOriginal: false,
     restartIdleLoader: 2000,
+    maxIdleThreads: 1,
     threads: 3,
     downloadThreads: 4,
     timeout: 10,
@@ -175,8 +181,10 @@ export function defaultConf(): Config {
     autoLoadInBackground: true,
     reverseMultipleImagesPost: true,
     ehentaiTitlePrefer: "japanese",
+    ehentaiMirrorHost: "",
     scrollingDelta: 300,
     scrollingSpeed: 20,
+    smartScrolling: true,
     id: uuid(),
     configPatchVersion: 0,
     displayText: {},
@@ -186,6 +194,7 @@ export function defaultConf(): Config {
     pixivRecordReading: false,
     pixivAscendWorks: false,
     pixivUgoiraMode: "ugoira",
+    pixivMirrorHost: "",
     filenameOrder: "auto",
     dragImageOut: false,
     excludeVideo: false,
@@ -222,7 +231,7 @@ function getStorageMethod() {
 
 const storage = getStorageMethod();
 
-type SiteConfig = Partial<Config> & SiteProfile;
+export type SiteConfig = Partial<Config> & SiteProfile;
 
 export function getConf(): Config {
   const cfgStr = storage.getItem(CONFIG_KEY);
@@ -354,6 +363,7 @@ export const transient = { imgSrcCSP: false, originalPolicy: "" };
 export type ConfigNumberType = "colCount"
   | "rowHeight"
   | "threads"
+  | "maxIdleThreads"
   | "downloadThreads"
   | "timeout"
   | "autoPageSpeed"
@@ -377,6 +387,7 @@ export type ConfigBooleanType = "fetchOriginal"
   | "hdThumbnails"
   | "dragImageOut"
   | "excludeVideo"
+  | "smartScrolling"
   ;
 export type ConfigSelectType = "readMode"
   | "gridMode"
@@ -386,7 +397,8 @@ export type ConfigSelectType = "readMode"
   | "filenameOrder"
   | "pixivUgoiraMode"
   ;
-export type ConfigTextType = "pixivImageServer"
+export type ConfigTextType = "pixivMirrorHost"
+  | "ehentaiMirrorHost"
   ;
 
 type OptionValue = {
@@ -408,6 +420,7 @@ export type ConfigItem = {
 export const ConfigItems: ConfigItem[] = [
   { key: "colCount", typ: "number" },
   { key: "rowHeight", typ: "number" },
+  { key: "maxIdleThreads", typ: "number" },
   { key: "threads", typ: "number" },
   { key: "downloadThreads", typ: "number" },
   { key: "paginationIMGCount", typ: "number" },
@@ -426,10 +439,12 @@ export const ConfigItems: ConfigItem[] = [
   { key: "autoEnterBig", typ: "boolean", gridColumnRange: [6, 11] },
   { key: "dragImageOut", typ: "boolean", gridColumnRange: [1, 6] },
   { key: "hdThumbnails", typ: "boolean", gridColumnRange: [6, 11] },
+  { key: "smartScrolling", typ: "boolean", gridColumnRange: [1, 11] },
   { key: "autoCollapsePanel", typ: "boolean", gridColumnRange: [1, 11] },
   { key: "pixivRecordReading", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /pixiv.net/ },
   { key: "pixivAscendWorks", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /pixiv.net/ },
-  { key: "pixivImageServer", typ: "input", gridColumnRange: [1, 11], placeholder: "https://i.pixiv.re", displayInSite: /pixiv.net/ },
+  { key: "pixivMirrorHost", typ: "input", gridColumnRange: [1, 11], placeholder: "https://i.pixiv.re", displayInSite: /pixiv.net/ },
+  { key: "ehentaiMirrorHost", typ: "input", gridColumnRange: [1, 11], placeholder: "https://e-hentai.org", displayInSite: /e[\-x]hentai.org/ },
   { key: "reverseMultipleImagesPost", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /(x.com|twitter.com)\// },
   { key: "excludeVideo", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /(x.com|twitter.com|kemono.cr)\// },
   {

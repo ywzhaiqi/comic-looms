@@ -20,23 +20,26 @@ type VideoInfo = {
     },
   ]
 }
+type Media = {
+  id_str: string,
+  expanded_url: string,// href
+  media_url_https: string, //img base
+  type: "photo" | "video" | "animated_gif",
+  sizes: {
+    large: Size,
+    medium: Size,
+    small: Size,
+    thumb: Size,
+  },
+  original_info?: {
+    height: number,
+    width: number,
+  }
+  video_info?: VideoInfo,
+}
 type Legacy = {
   entities: {
-    media: [
-      {
-        id_str: string,
-        expanded_url: string,// href
-        media_url_https: string, //img base
-        type: "photo" | "video" | "animated_gif",
-        sizes: {
-          large: Size,
-          medium: Size,
-          small: Size,
-          thumb: Size,
-        },
-        video_info?: VideoInfo,
-      },
-    ],
+    media: Media[],
   },
   id_str: string,
   full_text: string,
@@ -48,28 +51,41 @@ type Legacy = {
       tweet?: {
         legacy: Legacy,
       },
+      quoted_status_result?: {
+        result: ItemResult,
+      },
     }
   },
+}
+
+type ItemResult = {
+  legacy?: Legacy,
+  tweet?: {
+    legacy: Legacy,
+  },
+  rest_id?: string,
+  quoted_status_result?: {
+    result: ItemResult,
+  },
+  core?: {
+    user_results?: {
+      result: {
+        legacy?: {
+          name?: string,
+          screen_name?: string,
+        }
+        core?: {
+          name?: string,
+          screen_name?: string,
+        }
+      }
+    }
+  }
 }
 type Item = {
   itemContent: {
     tweet_results: {
-      result: {
-        legacy?: Legacy,
-        tweet?: {
-          legacy: Legacy,
-        },
-        rest_id?: string,
-        core?: {
-          user_results?: {
-            result: {
-              legacy?: {
-                name?: string,
-              }
-            }
-          }
-        }
-      }
+      result: ItemResult
     },
   }
 }
@@ -136,12 +152,12 @@ class TwitterUserMediasAPI implements TwitterAPIClient {
     let url = "";
     if (chapter.id === 0) {
       const variables = `{"userId":"${this.userID}","count":20,${cursor ? "\"cursor\":\"" + cursor + "\"," : ""}"includePromotedContent":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true}`;
-      const features = "&features=%7B%22rweb_video_screen_enabled%22%3Afalse%2C%22profile_label_improvements_pcf_label_in_post_enabled%22%3Atrue%2C%22rweb_tipjar_consumption_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22creator_subscriptions_tweet_preview_api_enabled%22%3Atrue%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%2C%22responsive_web_graphql_skip_user_profile_image_extensions_enabled%22%3Afalse%2C%22premium_content_api_read_enabled%22%3Afalse%2C%22communities_web_enable_tweet_community_results_fetch%22%3Atrue%2C%22c9s_tweet_anatomy_moderator_badge_enabled%22%3Atrue%2C%22responsive_web_grok_analyze_button_fetch_trends_enabled%22%3Afalse%2C%22responsive_web_grok_analyze_post_followups_enabled%22%3Atrue%2C%22responsive_web_jetfuel_frame%22%3Afalse%2C%22responsive_web_grok_share_attachment_enabled%22%3Atrue%2C%22articles_preview_enabled%22%3Atrue%2C%22responsive_web_edit_tweet_api_enabled%22%3Atrue%2C%22graphql_is_translatable_rweb_tweet_is_translatable_enabled%22%3Atrue%2C%22view_counts_everywhere_api_enabled%22%3Atrue%2C%22longform_notetweets_consumption_enabled%22%3Atrue%2C%22responsive_web_twitter_article_tweet_consumption_enabled%22%3Atrue%2C%22tweet_awards_web_tipping_enabled%22%3Afalse%2C%22responsive_web_grok_show_grok_translated_post%22%3Afalse%2C%22responsive_web_grok_analysis_button_from_backend%22%3Atrue%2C%22creator_subscriptions_quote_tweet_preview_enabled%22%3Afalse%2C%22freedom_of_speech_not_reach_fetch_enabled%22%3Atrue%2C%22standardized_nudges_misinfo%22%3Atrue%2C%22tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled%22%3Atrue%2C%22longform_notetweets_rich_text_read_enabled%22%3Atrue%2C%22longform_notetweets_inline_media_enabled%22%3Atrue%2C%22responsive_web_grok_image_annotation_enabled%22%3Atrue%2C%22responsive_web_enhance_cards_enabled%22%3Afalse%7D&fieldToggles=%7B%22withArticlePlainText%22%3Afalse%7D"
-      url = `${window.location.origin}/i/api/graphql/q6xj5bs0hapm9309hexA_g/UserTweets?variables=${encodeURIComponent(variables)}${features}`;
+      const features = "&features=%7B%22rweb_video_screen_enabled%22%3Afalse%2C%22profile_label_improvements_pcf_label_in_post_enabled%22%3Atrue%2C%22responsive_web_profile_redirect_enabled%22%3Afalse%2C%22rweb_tipjar_consumption_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22creator_subscriptions_tweet_preview_api_enabled%22%3Atrue%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%2C%22responsive_web_graphql_skip_user_profile_image_extensions_enabled%22%3Afalse%2C%22premium_content_api_read_enabled%22%3Afalse%2C%22communities_web_enable_tweet_community_results_fetch%22%3Atrue%2C%22c9s_tweet_anatomy_moderator_badge_enabled%22%3Atrue%2C%22responsive_web_grok_analyze_button_fetch_trends_enabled%22%3Afalse%2C%22responsive_web_grok_analyze_post_followups_enabled%22%3Atrue%2C%22responsive_web_jetfuel_frame%22%3Atrue%2C%22responsive_web_grok_share_attachment_enabled%22%3Atrue%2C%22responsive_web_grok_annotations_enabled%22%3Afalse%2C%22articles_preview_enabled%22%3Atrue%2C%22responsive_web_edit_tweet_api_enabled%22%3Atrue%2C%22graphql_is_translatable_rweb_tweet_is_translatable_enabled%22%3Atrue%2C%22view_counts_everywhere_api_enabled%22%3Atrue%2C%22longform_notetweets_consumption_enabled%22%3Atrue%2C%22responsive_web_twitter_article_tweet_consumption_enabled%22%3Atrue%2C%22tweet_awards_web_tipping_enabled%22%3Afalse%2C%22responsive_web_grok_show_grok_translated_post%22%3Afalse%2C%22responsive_web_grok_analysis_button_from_backend%22%3Atrue%2C%22post_ctas_fetch_enabled%22%3Atrue%2C%22creator_subscriptions_quote_tweet_preview_enabled%22%3Afalse%2C%22freedom_of_speech_not_reach_fetch_enabled%22%3Atrue%2C%22standardized_nudges_misinfo%22%3Atrue%2C%22tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled%22%3Atrue%2C%22longform_notetweets_rich_text_read_enabled%22%3Atrue%2C%22longform_notetweets_inline_media_enabled%22%3Atrue%2C%22responsive_web_grok_image_annotation_enabled%22%3Atrue%2C%22responsive_web_grok_imagine_annotation_enabled%22%3Atrue%2C%22responsive_web_grok_community_note_auto_translation_is_enabled%22%3Afalse%2C%22responsive_web_enhance_cards_enabled%22%3Afalse%7D&fieldToggles=%7B%22withArticlePlainText%22%3Afalse%7D";
+      url = `${window.location.origin}/i/api/graphql/ehYmFq6d3xwc49yqt52MIg/UserTweets?variables=${encodeURIComponent(variables)}${features}`;
     } else {
       const variables = `{"userId":"${this.userID}","count":20,${cursor ? "\"cursor\":\"" + cursor + "\"," : ""}"includePromotedContent":false,"withClientEventToken":false,"withBirdwatchNotes":false,"withVoice":true,"withV2Timeline":true}`;
-      const features = "&features=%7B%22rweb_tipjar_consumption_enabled%22%3Atrue%2C%22responsive_web_graphql_exclude_directive_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22creator_subscriptions_tweet_preview_api_enabled%22%3Atrue%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%2C%22responsive_web_graphql_skip_user_profile_image_extensions_enabled%22%3Afalse%2C%22communities_web_enable_tweet_community_results_fetch%22%3Atrue%2C%22c9s_tweet_anatomy_moderator_badge_enabled%22%3Atrue%2C%22articles_preview_enabled%22%3Atrue%2C%22tweetypie_unmention_optimization_enabled%22%3Atrue%2C%22responsive_web_edit_tweet_api_enabled%22%3Atrue%2C%22graphql_is_translatable_rweb_tweet_is_translatable_enabled%22%3Atrue%2C%22view_counts_everywhere_api_enabled%22%3Atrue%2C%22longform_notetweets_consumption_enabled%22%3Atrue%2C%22responsive_web_twitter_article_tweet_consumption_enabled%22%3Atrue%2C%22tweet_awards_web_tipping_enabled%22%3Afalse%2C%22creator_subscriptions_quote_tweet_preview_enabled%22%3Afalse%2C%22freedom_of_speech_not_reach_fetch_enabled%22%3Atrue%2C%22standardized_nudges_misinfo%22%3Atrue%2C%22tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled%22%3Atrue%2C%22tweet_with_visibility_results_prefer_gql_media_interstitial_enabled%22%3Atrue%2C%22rweb_video_timestamps_enabled%22%3Atrue%2C%22longform_notetweets_rich_text_read_enabled%22%3Atrue%2C%22longform_notetweets_inline_media_enabled%22%3Atrue%2C%22responsive_web_enhance_cards_enabled%22%3Afalse%7D&fieldToggles=%7B%22withArticlePlainText%22%3Afalse%7D";
-      url = `${window.location.origin}/i/api/graphql/aQQLnkexAl5z9ec_UgbEIA/UserMedia?variables=${encodeURIComponent(variables)}${features}`;
+      const features = "&features=%7B%22rweb_video_screen_enabled%22%3Afalse%2C%22profile_label_improvements_pcf_label_in_post_enabled%22%3Atrue%2C%22responsive_web_profile_redirect_enabled%22%3Afalse%2C%22rweb_tipjar_consumption_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22creator_subscriptions_tweet_preview_api_enabled%22%3Atrue%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%2C%22responsive_web_graphql_skip_user_profile_image_extensions_enabled%22%3Afalse%2C%22premium_content_api_read_enabled%22%3Afalse%2C%22communities_web_enable_tweet_community_results_fetch%22%3Atrue%2C%22c9s_tweet_anatomy_moderator_badge_enabled%22%3Atrue%2C%22responsive_web_grok_analyze_button_fetch_trends_enabled%22%3Afalse%2C%22responsive_web_grok_analyze_post_followups_enabled%22%3Atrue%2C%22responsive_web_jetfuel_frame%22%3Atrue%2C%22responsive_web_grok_share_attachment_enabled%22%3Atrue%2C%22responsive_web_grok_annotations_enabled%22%3Afalse%2C%22articles_preview_enabled%22%3Atrue%2C%22responsive_web_edit_tweet_api_enabled%22%3Atrue%2C%22graphql_is_translatable_rweb_tweet_is_translatable_enabled%22%3Atrue%2C%22view_counts_everywhere_api_enabled%22%3Atrue%2C%22longform_notetweets_consumption_enabled%22%3Atrue%2C%22responsive_web_twitter_article_tweet_consumption_enabled%22%3Atrue%2C%22tweet_awards_web_tipping_enabled%22%3Afalse%2C%22responsive_web_grok_show_grok_translated_post%22%3Afalse%2C%22responsive_web_grok_analysis_button_from_backend%22%3Atrue%2C%22post_ctas_fetch_enabled%22%3Atrue%2C%22creator_subscriptions_quote_tweet_preview_enabled%22%3Afalse%2C%22freedom_of_speech_not_reach_fetch_enabled%22%3Atrue%2C%22standardized_nudges_misinfo%22%3Atrue%2C%22tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled%22%3Atrue%2C%22longform_notetweets_rich_text_read_enabled%22%3Atrue%2C%22longform_notetweets_inline_media_enabled%22%3Atrue%2C%22responsive_web_grok_image_annotation_enabled%22%3Atrue%2C%22responsive_web_grok_imagine_annotation_enabled%22%3Atrue%2C%22responsive_web_grok_community_note_auto_translation_is_enabled%22%3Afalse%2C%22responsive_web_enhance_cards_enabled%22%3Afalse%7D&fieldToggles=%7B%22withArticlePlainText%22%3Afalse%7D";
+      url = `${window.location.origin}/i/api/graphql/MjGtmDI0wpveHq8k2zIlUQ/UserMedia?variables=${encodeURIComponent(variables)}${features}`;
     }
     try {
       const res = await window.fetch(url, { headers: createHeader(this.uuid), signal: AbortSignal.timeout(10000) });
@@ -156,7 +172,7 @@ class TwitterUserMediasAPI implements TwitterAPIClient {
         const { items, cursor } = homeForYouEntriesToItems(entries);
         return [items, cursor];
       } else {
-        const instructions = json.data.user.result.timeline_v2.timeline.instructions as Instructions;
+        const instructions = json.data.user.result.timeline.timeline.instructions as Instructions;
         const items: Item[] = [];
         const addToModule = instructions.find(ins => ins.type === "TimelineAddToModule") as UserMediaAddToModule | undefined;
         const entries = instructions.find(ins => ins.type === "TimelineAddEntries") as UserMediaEntries | undefined;
@@ -233,7 +249,8 @@ class TwitterHomeForYouAPI implements TwitterAPIClient {
   }
   async next(chapter: Chapter): Promise<[Item[], string | undefined]> {
     const cursor = this.chapterCursors[chapter.id];
-    const seenTweetIds = this.seenTweetIds[chapter.id].map(e => "\"" + e + "\"").join(",");
+    const seenTweetIds_ = this.seenTweetIds[chapter.id];
+    const seenTweetIds = seenTweetIds_.slice(-30).map(e => "\"" + e + "\"").join(",");
     const headers = createHeader(this.uuid);
     const [url, body] = (() => {
       if (chapter.id === 1) { // for you
@@ -242,10 +259,10 @@ class TwitterHomeForYouAPI implements TwitterAPIClient {
         const body = `{"variables":{"count":20,${cursorStr}"includePromotedContent":true,"latestControlAvailable":true,"requestContext":"launch","withCommunity":true,"seenTweetIds":[${seenTweetIds}]},"features":{"rweb_video_screen_enabled":false,"profile_label_improvements_pcf_label_in_post_enabled":true,"rweb_tipjar_consumption_enabled":true,"responsive_web_graphql_exclude_directive_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":true,"responsive_web_jetfuel_frame":false,"responsive_web_grok_share_attachment_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":true,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_enhance_cards_enabled":false},"queryId":"ci_OQZ2k0rG0Ax_lXRiWVA"}`
         return [url, body];
       } else if (chapter.id === 2) { // following
-        const url = `${window.location.origin}/i/api/graphql/nMyTQqsJiUGBKLGNSQamAA/HomeLatestTimeline`;
+        const url = `${window.location.origin}/i/api/graphql/HN6oP_7h7HayqyYimz97Iw/HomeLatestTimeline`;
         const cursorStr = cursor ? `"cursor":"${cursor}",` : "";
-        // const body = `{"variables":{"count":20,${cursorStr}"includePromotedContent":true,"latestControlAvailable":true,"seenTweetIds":[${seenTweetIds}]},"features":{"rweb_video_screen_enabled":false,"profile_label_improvements_pcf_label_in_post_enabled":true,"rweb_tipjar_consumption_enabled":true,"responsive_web_graphql_exclude_directive_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":true,"responsive_web_jetfuel_frame":false,"responsive_web_grok_share_attachment_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":true,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_enhance_cards_enabled":false},"queryId":"nMyTQqsJiUGBKLGNSQamAA"}`;
-        const body = `{"variables":{"count":20,${cursorStr}"includePromotedContent":true,"latestControlAvailable":true,"seenTweetIds":[${seenTweetIds}]},"features":{"rweb_video_screen_enabled":false,"profile_label_improvements_pcf_label_in_post_enabled":true,"rweb_tipjar_consumption_enabled":true,"responsive_web_graphql_exclude_directive_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":true,"responsive_web_jetfuel_frame":false,"responsive_web_grok_share_attachment_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":true,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_enhance_cards_enabled":false},"queryId":"nMyTQqsJiUGBKLGNSQamAA"}`;
+        const features = `{"rweb_video_screen_enabled":false,"profile_label_improvements_pcf_label_in_post_enabled":true,"responsive_web_profile_redirect_enabled":false,"rweb_tipjar_consumption_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":true,"responsive_web_jetfuel_frame":true,"responsive_web_grok_share_attachment_enabled":true,"responsive_web_grok_annotations_enabled":false,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":true,"post_ctas_fetch_enabled":true,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_grok_imagine_annotation_enabled":true,"responsive_web_grok_community_note_auto_translation_is_enabled":false,"responsive_web_enhance_cards_enabled":false}`;
+        const body = `{"variables":{"count":20,${cursorStr}"includePromotedContent":true,"enableRanking":false,"seenTweetIds":[${seenTweetIds}]},"features":${features},"queryId":"HN6oP_7h7HayqyYimz97Iw"}`;
         return [url, body];
       } else {
         if (!this.myID) this.myID = getMyID();
@@ -348,31 +365,31 @@ class TwitterMatcher extends BaseMatcher<Item[]> {
     if (!items) throw new Error("warn: cannot find items");
     const list: ImageNode[] = [];
     for (const item of items) {
-      const legacy = item?.itemContent?.tweet_results?.result?.legacy
-        || item?.itemContent?.tweet_results?.result?.tweet?.legacy
-        || item?.itemContent?.tweet_results?.result?.legacy?.retweeted_status_result?.result?.legacy;
-      const mediaList = legacy?.entities.media;
-      if (mediaList === undefined) {
-        const user = item.itemContent?.tweet_results?.result?.core?.user_results?.result?.legacy?.name;
+      const [mediaList, tweetID] = checkoutMedias(item);
+      if (mediaList.length === 0) {
+        const user = item.itemContent?.tweet_results?.result?.core?.user_results?.result?.legacy?.screen_name ?? item.itemContent?.tweet_results?.result?.core?.user_results?.result?.core?.screen_name;
         const rest_id = item.itemContent.tweet_results.result.rest_id;
         evLog("error", `cannot found mediaList: ${window.location.origin}/${user}/status/${rest_id}`, item);
         continue;
       }
-      const tweetID = legacy?.id_str!;
-      const actionLike = new NodeAction("♥", "like this tweet", async () => {
-        await fetch("https://x.com/i/api/graphql/lI07N6Otwv1PhnEgXILM7A/FavoriteTweet", {
-          "headers": createHeader(this.uuid),
-          "body": "{\"variables\":{\"tweet_id\":\"" + tweetID + "\"},\"queryId\":\"lI07N6Otwv1PhnEgXILM7A\"}",
-          "method": "POST", "mode": "cors"
+      let actionLike: NodeAction | undefined;
+      let actionBookmark: NodeAction | undefined;
+      if (tweetID) {
+        actionLike = new NodeAction("♥", "like this tweet", async () => {
+          await fetch("https://x.com/i/api/graphql/lI07N6Otwv1PhnEgXILM7A/FavoriteTweet", {
+            "headers": createHeader(this.uuid),
+            "body": "{\"variables\":{\"tweet_id\":\"" + tweetID + "\"},\"queryId\":\"lI07N6Otwv1PhnEgXILM7A\"}",
+            "method": "POST", "mode": "cors"
+          });
         });
-      });
-      const actionBookmark = new NodeAction("🔖", "bookmark this tweet", async () => {
-        await fetch("https://x.com/i/api/graphql/aoDbu3RHznuiSkQ9aNM67Q/CreateBookmark", {
-          "headers": createHeader(this.uuid),
-          "body": "{\"variables\":{\"tweet_id\":\"" + tweetID + "\"},\"queryId\":\"aoDbu3RHznuiSkQ9aNM67Q\"}",
-          "method": "POST", "mode": "cors"
+        actionBookmark = new NodeAction("🔖", "bookmark this tweet", async () => {
+          await fetch("https://x.com/i/api/graphql/aoDbu3RHznuiSkQ9aNM67Q/CreateBookmark", {
+            "headers": createHeader(this.uuid),
+            "body": "{\"variables\":{\"tweet_id\":\"" + tweetID + "\"},\"queryId\":\"aoDbu3RHznuiSkQ9aNM67Q\"}",
+            "method": "POST", "mode": "cors"
+          });
         });
-      });
+      }
       this.postCount++;
       if (ADAPTER.conf.reverseMultipleImagesPost) {
         mediaList.reverse();
@@ -391,12 +408,18 @@ class TwitterMatcher extends BaseMatcher<Item[]> {
         const src = `${baseSrc}?format=${ext}&name=${media.sizes.small ? "small" : "thumb"}`;
         let href = media.expanded_url.replace(/\/(photo|video)\/\d+/, "");
         href = `${href}/${media.type === "video" ? "video" : "photo"}/${i + 1}`
-        const largeSrc = `${baseSrc}?format=${ext}&name=${media.sizes.large ? "large" : media.sizes.medium ? "medium" : "small"}`
+        let largeSrc = "";
+        if (ADAPTER.conf.fetchOriginal && media.original_info) {
+          // largeSrc = `${baseSrc}?format=${ext}&name=4096x4096`;
+          largeSrc = `${baseSrc}?format=${ext}&name=orig`;
+        } else {
+          largeSrc = `${baseSrc}?format=${ext}&name=${media.sizes.large ? "large" : media.sizes.medium ? "medium" : "small"}`
+        }
         const title = `${media.id_str}-${baseSrc.split("/").pop()}.${ext}`
         const wh = { w: media.sizes.small.w, h: media.sizes.small.h };
         const node = new ImageNode(src, href, title, undefined, largeSrc, wh);
-        node.actions.push(actionLike);
-        node.actions.push(actionBookmark);
+        if (actionLike) node.actions.push(actionLike);
+        if (actionBookmark) node.actions.push(actionBookmark);
 
         if (media.video_info) {
           let bitrate = 0;
@@ -507,6 +530,38 @@ function homeForYouEntriesToItems(entries: HomeForYouEntries): { items: Item[], 
     }
   }
   return { items, ids, cursor };
+}
+
+function checkoutMedias(item: Item): [Media[], string | undefined] {
+  // item?.itemContent?.tweet_results?.result?.legacy
+  // item?.itemContent?.tweet_results?.result?.tweet?.legacy
+  // item?.itemContent?.tweet_results?.result?.legacy?.retweeted_status_result?.result?.legacy;
+  let media1 = item.itemContent?.tweet_results?.result?.legacy?.entities?.media;
+  let media2 = item.itemContent?.tweet_results?.result?.legacy?.retweeted_status_result?.result?.tweet?.legacy?.entities?.media;
+  let media3 = item.itemContent?.tweet_results?.result?.legacy?.retweeted_status_result?.result?.legacy?.entities?.media;
+  let media4 = item.itemContent?.tweet_results?.result?.tweet?.legacy?.entities?.media;
+  let media5 = item.itemContent?.tweet_results?.result?.tweet?.legacy?.retweeted_status_result?.result?.tweet?.legacy?.entities?.media;
+  let media6 = item.itemContent?.tweet_results?.result?.tweet?.legacy?.retweeted_status_result?.result?.legacy?.entities?.media;
+
+  const mediaIdSet = new Set();
+  let medias = [media1 ?? [], media2 ?? [], media3 ?? [], media4 ?? [], media5 ?? [], media6 ?? [],].flat();
+  let ret = [];
+  for (const me of medias) {
+    if (!mediaIdSet.has(me.id_str)) {
+      ret.push(me);
+      mediaIdSet.add(me.id_str);
+    }
+  }
+
+  let tweetId1 = item.itemContent?.tweet_results?.result?.legacy?.id_str;
+  let tweetId2 = item.itemContent?.tweet_results?.result?.legacy?.retweeted_status_result?.result?.tweet?.legacy?.id_str;
+  let tweetId3 = item.itemContent?.tweet_results?.result?.legacy?.retweeted_status_result?.result?.legacy?.id_str;
+  let tweetId4 = item.itemContent?.tweet_results?.result?.tweet?.legacy?.id_str;
+  let tweetId5 = item.itemContent?.tweet_results?.result?.tweet?.legacy?.retweeted_status_result?.result?.tweet?.legacy?.id_str;
+  let tweetId6 = item.itemContent?.tweet_results?.result?.tweet?.legacy?.retweeted_status_result?.result?.legacy?.id_str;
+  let tweewId = tweetId6 ?? tweetId5 ?? tweetId4 ?? tweetId3 ?? tweetId2 ?? tweetId1;
+  return [ret, tweewId];
+
 }
 ADAPTER.addSetup({
   name: "Twitter | X",

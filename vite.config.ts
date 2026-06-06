@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import monkey, { cdn } from 'vite-plugin-monkey';
 
-const VERSION = '4.13.7';
+const VERSION = '4.14.11';
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => {
   let downloadURL: string | undefined;
@@ -116,7 +116,7 @@ const _classWorkerURL = URL.createObjectURL(new Blob([decodeBase64(encodedJs)], 
           fileName: 'comic-looms.user.js',
           metaFileName: 'comic-looms.meta.js',
           externalGlobals: {
-            "@zip.js/zip.js": cdn.jsdelivr("zip", "dist/zip-full.min.js"),
+            "@zip.js/zip.js": cdn.jsdelivr("zip", "dist/zip.min.js"),
             "file-saver": cdn.jsdelivr("saveAs", "dist/FileSaver.min.js"),
             "pica": cdn.jsdelivr("pica", "dist/pica.min.js"),
           },

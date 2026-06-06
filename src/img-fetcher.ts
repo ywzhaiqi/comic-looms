@@ -1,12 +1,8 @@
 import { transient } from "./config";
 import EBUS from "./event-bus";
 import ImageNode from "./img-node";
-import { ADAPTER } from "./platform/adapt";
 import { Matcher, OriginMeta, SubData } from "./platform/platform";
-import { Debouncer } from "./utils/debouncer";
 import { evLog } from "./utils/ev-log";
-import { i18n } from "./utils/i18n";
-import { xhrWapper } from "./utils/query";
 
 export type DownloadState = {
   total: number;
@@ -175,11 +171,11 @@ export class IMGFetcher {
   }
 
   async fetchImageData(): Promise<[Uint8Array<ArrayBuffer>, string]> {
-    const data = await this.fetchBigImage();
+    const data = await this.matcher.fetchImageData(this);
     if (data == null) {
       throw new Error(`fetch image data is empty, image url:${this.node.originSrc}`);
     }
-    return [new Uint8Array(await data.arrayBuffer()), data.type];
+    return [new Uint8Array(await data[0].arrayBuffer()), data[0].type];
   }
 
   render(force?: boolean) {
@@ -232,56 +228,6 @@ export class IMGFetcher {
 
   ratio(): number {
     return this.node.ratio();
-  }
-
-  async fetchBigImage(): Promise<Blob | null> {
-    if (this.node.originSrc?.startsWith("blob:")) {
-      return await fetch(this.node.originSrc).then(resp => resp.blob());
-    }
-    const imgFetcher = this;
-    return new Promise(async (resolve, reject) => {
-      const debouncer = new Debouncer();
-      const timeout = () => {
-        debouncer.addEvent("XHR_TIMEOUT", () => {
-          this.abort();
-          reject(new Error("timeout"));
-        }, ADAPTER.conf.timeout * 1000);
-      };
-      try {
-        this.abortSignal = xhrWapper(imgFetcher.node.originSrc!, "blob", {
-          onload: function(response) {
-            const data = response.response;
-            try {
-              imgFetcher.setDownloadState({ readyState: response.readyState });
-            } catch (error) {
-              evLog("error", "warn: fetch big image data onload setDownloadState error:", error);
-            }
-            imgFetcher.abortSignal = undefined;
-            resolve(data);
-          },
-          onerror: function(response) {
-            imgFetcher.abortSignal = undefined;
-            // "Refused to connect to "https://ba.hitomi.la/avif/123/456/789.avif": URL is not permitted"
-            if (response.status === 0) {
-              const domain = response.error.match(/(https?:\/\/.*?)\/.*/)?.[1] ?? "";
-              reject(new Error(i18n.failFetchReason1.get().replace("{{domain}}", domain)));
-            } else {
-              reject(new Error(`response status:${response.status}, error:${response.error}, response:${response.response}`));
-            }
-          },
-          onprogress: function(response) {
-            imgFetcher.setDownloadState({ total: response.total, loaded: response.loaded, readyState: response.readyState });
-            timeout();
-          },
-          onloadstart: function() {
-            imgFetcher.setDownloadState(imgFetcher.downloadState);
-          }
-        }, this.matcher.headers(this.node));
-        timeout();
-      } catch (error) {
-        reject(error);
-      }
-    });
   }
 
   abort() {

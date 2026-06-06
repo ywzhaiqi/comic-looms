@@ -58,6 +58,7 @@ export interface Events {
   "notify-message": (level: "error" | "info", message: string, duration?: number) => void;
   "cherry-pick-changed": (chapaterIndex: number, cherryPick: CherryPick) => void;
   "add-cherry-pick-range": (chapterIndex: number, index: number, positive: boolean, shiftKey: boolean) => void;
+  "get-cherry-pick-last-index": () => number;
   "imf-check-picked": (chapterIndex: number, index: number) => boolean;
   "pf-init": (cb: () => void) => void;
   "toggle-main-view": (open?: boolean) => void;

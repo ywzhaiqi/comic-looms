@@ -15,10 +15,12 @@ import { createStyleCustomPanel } from "./style-custom-panel";
 import queryCSSRules from "../utils/query-cssrules";
 import { createActionCustomPanel } from "./actions-custom";
 import { ADAPTER } from "../platform/adapt";
+import icons from "../utils/icons";
+import { FullViewGridManager } from "./full-view-grid-manager";
 
 export type Events = ReturnType<typeof initEvents>;
 
-export type KeyboardInBigImageModeId = "step-image-prev"
+export type AppEventIDInBigImgFrame = "step-image-prev"
   | "step-image-next"
   | "exit-big-image-mode"
   | "step-to-first-image"
@@ -35,7 +37,12 @@ export type KeyboardInBigImageModeId = "step-image-prev"
   | "exclude-current"
   | "go-prev-chapter"
   | "go-next-chapter";
-export type KeyboardInFullViewGridId = "open-big-image-mode"
+export type AppEventIDInFullViewGrid = "open-big-image-mode"
+  | "open-in-new-tab"
+  | "cherry-pick-select"
+  | "cherry-pick-select-range"
+  | "cherry-pick-exclude"
+  | "cherry-pick-exclude-range"
   | "pause-auto-load-temporarily"
   | "exit-full-view-grid"
   | "columns-increase"
@@ -46,25 +53,29 @@ export type KeyboardInFullViewGridId = "open-big-image-mode"
   | "start-download"
   | "go-prev-chapter"
   | "go-next-chapter";
-export type KeyboardInMainId = "open-full-view-grid" | "start-download";
-export type KeyboardEvents = {
-  inBigImageMode: Record<KeyboardInBigImageModeId, KeyboardDesc>,
-  inFullViewGrid: Record<KeyboardInFullViewGridId, KeyboardDesc>,
-  inMain: Record<KeyboardInMainId, KeyboardDesc>,
+export type AppEventIDInMain = "open-full-view-grid" | "start-download";
+export type AppEvents = {
+  inBigImageMode: Record<AppEventIDInBigImgFrame, AppEventDesc>,
+  inFullViewGrid: Record<AppEventIDInFullViewGrid, AppEventDesc>,
+  inMain: Record<AppEventIDInMain, AppEventDesc>,
 }
-type KBCallback = (event: KeyboardEvent | MouseEvent) => void;
-export class KeyboardDesc {
+type AppEvent = (event: KeyboardEvent | MouseEvent | undefined) => void;
+export class AppEventDesc {
   defaultKeys: string[];
-  cb: KBCallback;
+  icon: string;
+  cb: AppEvent;
   noPreventDefault?: boolean = false;
-  constructor(defaultKeys: string[], cb: (event: KeyboardEvent | MouseEvent) => void, noPreventDefault?: boolean) {
+  noKeyboard: boolean = false;
+  constructor(defaultKeys: string[], icon: string, cb: AppEvent, noPreventDefault?: boolean, noKeyboard?: boolean) {
     this.defaultKeys = defaultKeys;
+    this.icon = icon;
     this.cb = cb;
-    this.noPreventDefault = noPreventDefault || false;
+    this.noPreventDefault = noPreventDefault ?? false;
+    this.noKeyboard = noKeyboard ?? false;
   }
 }
 
-export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGFetcherQueue, IL: IdleLoader, PH: PageHelper) {
+export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, FVGM: FullViewGridManager, IFQ: IMGFetcherQueue, IL: IdleLoader, PH: PageHelper) {
   // modify config
   function modNumberConfigEvent(key: ConfigNumberType, data?: "add" | "minus", value?: number, siteName?: string) {
     if (!value) {
@@ -72,11 +83,12 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
         colCount: [1, 12],
         rowHeight: [50, 4096],
         threads: [0, 10],
+        maxIdleThreads: [0, 10],
         downloadThreads: [1, 10],
-        timeout: [8, 40],
+        timeout: [2, 40],
         autoPageSpeed: [1, 100],
         preventScrollPageTime: [-1, 90000],
-        paginationIMGCount: [1, 3],
+        paginationIMGCount: [1, 10],
         scrollingDelta: [1, 5000],
         scrollingSpeed: [1, 100],
       };
@@ -268,112 +280,203 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
     // document.body.focus();
   }
 
-  function initKeyboardEvent(): KeyboardEvents {
-    const inBigImageMode: Record<KeyboardInBigImageModeId, KeyboardDesc> = {
-      "exit-big-image-mode": new KeyboardDesc(
+  function initAppEvents(): AppEvents {
+    const inBigImageMode: Record<AppEventIDInBigImgFrame, AppEventDesc> = {
+      "exit-big-image-mode": new AppEventDesc(
         ["escape", "enter"],
+        icons.exitIcon,
         () => BIFM.hidden()
       ),
-      "step-image-prev": new KeyboardDesc(
+      "step-image-prev": new AppEventDesc(
         ["arrowleft"],
+        icons.prevIcon,
         () => {
           BIFM.callbackOnWheel?.();
           BIFM.stepNext(ADAPTER.conf.reversePages ? "next" : "prev");
         }
       ),
-      "step-image-next": new KeyboardDesc(
+      "step-image-next": new AppEventDesc(
         ["arrowright"],
+        icons.nextIcon,
         () => {
           BIFM.callbackOnWheel?.();
           BIFM.stepNext(ADAPTER.conf.reversePages ? "prev" : "next");
         }
       ),
-      "step-to-first-image": new KeyboardDesc(
+      "step-to-first-image": new AppEventDesc(
         ["home"],
+        "GO 1",
         () => BIFM.stepNext("next", 0, 1)
       ),
-      "step-to-last-image": new KeyboardDesc(
+      "step-to-last-image": new AppEventDesc(
         ["end"],
+        "GO End",
         () => BIFM.stepNext("prev", 0, -1)
       ),
-      "scale-image-increase": new KeyboardDesc(
+      "scale-image-increase": new AppEventDesc(
         ["="],
+        icons.zoomOutIcon,
         () => BIFM.scaleBigImages(1, 5)
       ),
-      "scale-image-decrease": new KeyboardDesc(
+      "scale-image-decrease": new AppEventDesc(
         ["-"],
+        icons.zoomInIcon,
         () => BIFM.scaleBigImages(-1, 5)
       ),
-      "scroll-image-up": new KeyboardDesc(
+      "scroll-image-up": new AppEventDesc(
         ["pageup", "arrowup", "shift+space"],
+        "UP",
         (event) => {
+          if (!event) return;
           const key = parseKey(event);
           const noPrevent = ["pageup", "shift+space"].includes(key);
           let customKey = !["pageup", "arrowup", "shift+space"].includes(key);
           BIFM.onWheel(new WheelEvent("wheel", { deltaY: ADAPTER.conf.scrollingDelta * -1 }), noPrevent, customKey, undefined, event);
         }, true
       ),
-      "scroll-image-down": new KeyboardDesc(
+      "scroll-image-down": new AppEventDesc(
         ["pagedown", "arrowdown", "space"],
+        "DN",
         (event) => {
+          if (!event) return;
           const key = parseKey(event);
           const noPrevent = ["pagedown", "space"].includes(key);
           const customKey = !["pagedown", "arrowdown", "space"].includes(key);
           BIFM.onWheel(new WheelEvent("wheel", { deltaY: ADAPTER.conf.scrollingDelta }), noPrevent, customKey, undefined, event);
         }, true
       ),
-      "toggle-auto-play": new KeyboardDesc(
+      "toggle-auto-play": new AppEventDesc(
         ["p"],
+        icons.playIcon,
         () => EBUS.emit("toggle-auto-play")
       ),
-      "round-read-mode": new KeyboardDesc(
+      "round-read-mode": new AppEventDesc(
         ["alt+m"],
+        icons.switchReadModeIcon,
         () => {
           const readModeList: ReadMode[] = ["pagination", "continuous", "horizontal"];
           const index = (readModeList.indexOf(ADAPTER.conf.readMode) + 1) % readModeList.length;
           modSelectConfigEvent("readMode", readModeList[index]);
         }, true
       ),
-      "toggle-reverse-pages": new KeyboardDesc(
+      "toggle-reverse-pages": new AppEventDesc(
         ["alt+f"],
+        icons.reverseIcon,
         () => modBooleanConfigEvent("reversePages", !ADAPTER.conf.reversePages), true
       ),
-      "rotate-image": new KeyboardDesc(
+      "rotate-image": new AppEventDesc(
         ["alt+r"],
+        icons.rotateIcon,
         () => EBUS.emit("bifm-rotate-image"), true
       ),
-      "cherry-pick-current": new KeyboardDesc(
+      "cherry-pick-current": new AppEventDesc(
         ["alt+x"],
+        "PICK",
         () => BIFM.cherryPickCurrent(false), true
       ),
-      "exclude-current": new KeyboardDesc(
+      "exclude-current": new AppEventDesc(
         ["shift+alt+x"],
+        "EXCLUDE",
         () => BIFM.cherryPickCurrent(true), true
       ),
-      "go-prev-chapter": new KeyboardDesc(
+      "go-prev-chapter": new AppEventDesc(
         ["shift+alt+w"],
+        icons.prevChapterIcon,
         () => EBUS.emit("pf-step-chapters", "prev"), true
       ),
-      "go-next-chapter": new KeyboardDesc(
+      "go-next-chapter": new AppEventDesc(
         ["alt+w"],
+        icons.nextChapterIcon,
         () => EBUS.emit("pf-step-chapters", "next"), true
       ),
     };
-    const inFullViewGrid: Record<KeyboardInFullViewGridId, KeyboardDesc> = {
-      "open-big-image-mode": new KeyboardDesc(
-        ["enter"], () => {
-          let start = IFQ.currIndex;
-          if (numberRecord && numberRecord.length > 0) {
-            start = Number(numberRecord.join("")) - 1;
+    const inFullViewGrid: Record<AppEventIDInFullViewGrid, AppEventDesc> = {
+      "open-big-image-mode": new AppEventDesc(
+        ["enter"],
+        icons.imageIcon,
+        (event) => {
+          let target: HTMLAnchorElement | undefined;
+          if (event instanceof MouseEvent && event.relatedTarget instanceof HTMLDivElement) {
+            target = event.relatedTarget.querySelector<HTMLAnchorElement>("a") ?? undefined;
+          } else if (numberRecord && numberRecord.length > 0) {
+            let start = Number(numberRecord.join("")) - 1;
             numberRecord = null;
             if (isNaN(start)) return;
             start = Math.max(0, Math.min(start, IFQ.length - 1));
+            target = IFQ[start].node.root?.querySelector<HTMLAnchorElement>("a") ?? undefined;
+          } else {
+            target = IFQ[IFQ.currIndex].node.root?.querySelector<HTMLAnchorElement>("a") ?? undefined;
           }
-          IFQ[start].node.root?.querySelector<HTMLAnchorElement>("a")?.dispatchEvent(new MouseEvent("click", { bubbles: false, cancelable: true }));
+          target?.dispatchEvent(new MouseEvent("click", { bubbles: false, cancelable: true }));
         }
       ),
-      "pause-auto-load-temporarily": new KeyboardDesc(
+      "open-in-new-tab": new AppEventDesc(
+        ["alt+o"],
+        icons.openInNewTabIcon,
+        (event) => {
+          if (event instanceof MouseEvent && event.relatedTarget) {
+            const href = (event.relatedTarget as HTMLElement)?.querySelector("a")?.href;
+            if (href) {
+              const an = document.createElement("a");
+              an.href = href;
+              an.target = "_blank";
+              an.click();
+              an.remove();
+            }
+          }
+        }
+        , false, true),
+      "cherry-pick-select": new AppEventDesc(
+        [""],
+        icons.cherryPickIcon,
+        (event) => {
+          if (event instanceof MouseEvent && event.relatedTarget) {
+            const index = parseInt((event.relatedTarget as HTMLElement)?.getAttribute("data-index") ?? "");
+            if (isNaN(index) || index < 0) return;
+            EBUS.emit("add-cherry-pick-range", FVGM.chapterIndex, index, true, false);
+          }
+        },
+        false, true
+      ),
+      "cherry-pick-select-range": new AppEventDesc(
+        [""],
+        `<span>➔</span>${icons.cherryPickIcon}`,
+        (event) => {
+          if (event instanceof MouseEvent && event.relatedTarget) {
+            const index = parseInt((event.relatedTarget as HTMLElement)?.getAttribute("data-index") ?? "");
+            if (isNaN(index) || index < 0) return;
+            EBUS.emit("add-cherry-pick-range", FVGM.chapterIndex, index, true, true);
+          }
+        },
+        false, true
+      ),
+      "cherry-pick-exclude": new AppEventDesc(
+        [""],
+        icons.excludeIcon,
+        (event) => {
+          if (event instanceof MouseEvent && event.relatedTarget) {
+            const index = parseInt((event.relatedTarget as HTMLElement)?.getAttribute("data-index") ?? "");
+            if (isNaN(index) || index < 0) return;
+            EBUS.emit("add-cherry-pick-range", FVGM.chapterIndex, index, false, false);
+          }
+        },
+        false, true
+      ),
+      "cherry-pick-exclude-range": new AppEventDesc(
+        [""],
+        `<span>➔</span>${icons.excludeIcon}`,
+        (event) => {
+          if (event instanceof MouseEvent && event.relatedTarget) {
+            const index = parseInt((event.relatedTarget as HTMLElement)?.getAttribute("data-index") ?? "");
+            if (isNaN(index) || index < 0) return;
+            EBUS.emit("add-cherry-pick-range", FVGM.chapterIndex, index, false, true);
+          }
+        },
+        false, true
+      ),
+      "pause-auto-load-temporarily": new AppEventDesc(
         ["alt+p"],
+        icons.pauseAutoLoadIcon,
         () => {
           IL.autoLoad = !IL.autoLoad;
           if (IL.autoLoad) {
@@ -384,56 +487,82 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
           }
         }
       ),
-      "exit-full-view-grid": new KeyboardDesc(
+      "exit-full-view-grid": new AppEventDesc(
         ["escape"],
+        icons.exitIcon,
         () => EBUS.emit("toggle-main-view", false)
       ),
-      "columns-increase": new KeyboardDesc(
+      "columns-increase": new AppEventDesc(
         ["="],
+        "COL+",
         () => modNumberConfigEvent("colCount", "add")
       ),
-      "columns-decrease": new KeyboardDesc(
+      "columns-decrease": new AppEventDesc(
         ["-"],
+        "COL-",
         () => modNumberConfigEvent("colCount", "minus")
       ),
-      "toggle-auto-play": new KeyboardDesc(
+      "toggle-auto-play": new AppEventDesc(
         ["p"],
+        icons.playIcon,
         () => EBUS.emit("toggle-auto-play")
       ),
-      "retry-fetch-next-page": new KeyboardDesc(
+      "retry-fetch-next-page": new AppEventDesc(
         ["alt+n"],
+        icons.refetchNextIcon,
         () => EBUS.emit("pf-retry-extend")
       ),
-      "resize-flow-vision": new KeyboardDesc(
+      "resize-flow-vision": new AppEventDesc(
         ["alt+r"],
+        icons.resizeGridIcon,
         () => EBUS.emit("fvg-layout-resize")
       ),
-      "start-download": new KeyboardDesc(
+      "start-download": new AppEventDesc(
         ["shift+alt+d"],
+        icons.downloadIcon,
         () => EBUS.emit("start-download", () => PH.minify("fullViewGrid", false))),
-      "go-prev-chapter": new KeyboardDesc(
+      "go-prev-chapter": new AppEventDesc(
         ["shift+alt+w"],
+        icons.prevChapterIcon,
         () => EBUS.emit("pf-step-chapters", "prev"), true
       ),
-      "go-next-chapter": new KeyboardDesc(
+      "go-next-chapter": new AppEventDesc(
         ["alt+w"],
+        icons.nextChapterIcon,
         () => EBUS.emit("pf-step-chapters", "next"), true
       ),
     };
-    const inMain: Record<KeyboardInMainId, KeyboardDesc> = {
-      "open-full-view-grid": new KeyboardDesc(["enter"], () => {
-        // check focus element is not input Elements
-        const activeElement = document.activeElement;
-        if (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement || activeElement instanceof HTMLSelectElement) return;
-        EBUS.emit("toggle-main-view", true)
-      }, true),
-      "start-download": new KeyboardDesc(["shift+alt+d"], () => {
-        EBUS.emit("start-download", () => PH.minify("exit", false));
-      }, true),
+    const inMain: Record<AppEventIDInMain, AppEventDesc> = {
+      "open-full-view-grid": new AppEventDesc(
+        ["enter"],
+        "OPEN",
+        (event) => {
+          if (event instanceof KeyboardEvent) {
+            const key = parseKey(event);
+            if (key === "enter") {
+              // check focus element is not input Elements
+              const activeElement = document.activeElement as HTMLElement | null;
+              if (activeElement instanceof HTMLInputElement
+                || activeElement instanceof HTMLTextAreaElement
+                || activeElement instanceof HTMLSelectElement
+                || activeElement?.isContentEditable) {
+
+                return;
+              }
+            }
+          }
+          EBUS.emit("toggle-main-view", true)
+        }, true),
+      "start-download": new AppEventDesc(
+        ["shift+alt+d"],
+        icons.downloadIcon,
+        () => {
+          EBUS.emit("start-download", () => PH.minify("exit", false));
+        }, true),
     };
     return { inBigImageMode, inFullViewGrid, inMain }
   }
-  const keyboardEvents = initKeyboardEvent();
+  const appEvents = initAppEvents();
 
   // use keyboardEvents
   let numberRecord: number[] | null = null;
@@ -441,8 +570,8 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
   function bigImageFrameKeyBoardEvent(event: KeyboardEvent | MouseEvent) {
     if (HTML.bigImageFrame.classList.contains("big-img-frame-collapse")) return;
     const key = parseKey(event);
-    const found = Object.entries(keyboardEvents.inBigImageMode).find(([id, desc]) => {
-      const override = ADAPTER.conf.keyboards.inBigImageMode[id as KeyboardInBigImageModeId];
+    const found = Object.entries(appEvents.inBigImageMode).filter(entry => !entry[1].noKeyboard).find(([id, desc]) => {
+      const override = ADAPTER.conf.keyboards.inBigImageMode[id as AppEventIDInBigImgFrame];
       return ((override !== undefined && override.length > 0) ? override.includes(key) : desc.defaultKeys.includes(key));
     });
     if (!found) return;
@@ -454,8 +583,8 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
   function fullViewGridKeyBoardEvent(event: KeyboardEvent | MouseEvent) {
     if (HTML.root.classList.contains("ehvp-root-collapse")) return;
     const key = parseKey(event);
-    const found = Object.entries(keyboardEvents.inFullViewGrid).find(([id, desc]) => {
-      const override = ADAPTER.conf.keyboards.inFullViewGrid[id as KeyboardInFullViewGridId];
+    const found = Object.entries(appEvents.inFullViewGrid).filter(entry => !entry[1].noKeyboard).find(([id, desc]) => {
+      const override = ADAPTER.conf.keyboards.inFullViewGrid[id as AppEventIDInFullViewGrid];
       return ((override !== undefined && override.length > 0) ? override.includes(key) : desc.defaultKeys.includes(key));
     });
     if (found) {
@@ -472,8 +601,8 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
     if (!HTML.root.classList.contains("ehvp-root-collapse")) return;
     if (!HTML.bigImageFrame.classList.contains("big-img-frame-collapse")) return;
     const key = parseKey(event);
-    const found = Object.entries(keyboardEvents.inMain).find(([id, desc]) => {
-      const override = ADAPTER.conf.keyboards.inMain[id as KeyboardInMainId];
+    const found = Object.entries(appEvents.inMain).filter(entry => !entry[1].noKeyboard).find(([id, desc]) => {
+      const override = ADAPTER.conf.keyboards.inMain[id as AppEventIDInMain];
       return ((override !== undefined && override.length > 0) ? override.includes(key) : desc.defaultKeys.includes(key));
     });
     if (!found) return;
@@ -486,13 +615,12 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
     BIFM.visible ? HTML.bigImageFrame.focus() : HTML.fullViewGrid.focus();
   }
 
-  // 显示简易指南事件
-  function showGuideEvent() {
+  function showHelpGuideEvent() {
     createHelpPanel(HTML.root, focus);
   }
 
   function showKeyboardCustomEvent() {
-    createKeyboardCustomPanel(keyboardEvents, HTML.root, focus);
+    createKeyboardCustomPanel(appEvents, HTML.root, focus);
   }
 
   function showSiteProfilesEvent() {
@@ -520,7 +648,7 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
     fullViewGridKeyBoardEvent,
     bigImageFrameKeyBoardEvent,
     keyboardEvent,
-    showGuideEvent,
+    showGuideEvent: showHelpGuideEvent,
     collapsePanelEvent,
     abortMouseleavePanelEvent,
     showKeyboardCustomEvent,
@@ -529,6 +657,7 @@ export function initEvents(HTML: Elements, BIFM: BigImageFrameManager, IFQ: IMGF
     showActionCustomEvent,
 
     changeReadModeEvent,
+    appEvents,
   }
 }
 

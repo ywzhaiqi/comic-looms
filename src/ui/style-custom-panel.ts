@@ -314,7 +314,7 @@ function displayTextPreset(index: number): DisplayText {
 }
 
 const DEFAULT_DISPLAY_TEXT: DisplayText = {
-  entry: icons.moonViewCeremony,
+  entry: "<✿>",
   collapse: i18n.collapse.get(),
   fin: "FIN",
   autoPagePlay: i18n.autoPagePlay.get(),

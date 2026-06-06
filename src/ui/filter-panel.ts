@@ -42,9 +42,8 @@ export class FilterPanel {
         const tag = this.candidateCached[this.candidateSelectIndex];
         const term = this.input.value.trim();
         this.input.value = "";
-        if (tag) {
-          const exclude = term.startsWith("!");
-          this.filter.push(exclude, tag);
+        if (tag) {// FIXME
+          this.filter.push(term);
           this.updateFilterValues();
         }
         this.candidates.hidden = true;
@@ -58,9 +57,6 @@ export class FilterPanel {
       return;
     }
     let term = this.input.value.trim();
-    const exclude = term.startsWith("!");
-    if (exclude) term = term.slice(1);
-
     // if (!term || term.length < 2) {
     //   this.candidates.hidden = true;
     //   return;
@@ -68,7 +64,7 @@ export class FilterPanel {
     if (!noCache) {
       this.candidateCached = [...this.filter.allTags].filter(t => !term || t.includes(term)); // TODO: fuzzy search
     }
-    if (this.candidateCached.length > 500) {
+    if (this.candidateCached.length > 100) {
       this.candidates.hidden = true;
       return;
     }
@@ -87,7 +83,7 @@ export class FilterPanel {
         const tag = (ev.target as HTMLElement).textContent;
         if (!tag) return;
         this.input.value = "";
-        this.filter.push(exclude, tag);
+        this.filter.push(tag);
         this.updateFilterValues();
         this.candidates.hidden = true;
       });
@@ -103,7 +99,7 @@ export class FilterPanel {
     this.list.innerHTML = "";
     for (const tag of this.filter.values) {
       const li = document.createElement("li");
-      li.textContent = tag.tag;
+      li.textContent = tag.toString();
       if (tag.exclude) {
         li.style.color = "red";
         li.style.textDecorationLine = "line-through";

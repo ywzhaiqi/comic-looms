@@ -1,16 +1,16 @@
 import { saveConf } from "../config";
 import { i18n } from "../utils/i18n";
 import parseKey from "../utils/keyboard";
-import { KeyboardDesc, KeyboardEvents, KeyboardInBigImageModeId, KeyboardInFullViewGridId, KeyboardInMainId } from "./event";
+import { AppEventDesc, AppEvents, AppEventIDInBigImgFrame, AppEventIDInFullViewGrid, AppEventIDInMain } from "./event";
 import { ADAPTER } from "../platform/adapt";
 
 type Category = keyof typeof ADAPTER.conf.keyboards;
-type ID = KeyboardInBigImageModeId;
+type ID = AppEventIDInBigImgFrame;
 type IDKeys = { [key in ID]?: string[] }
-type IDDesc = { [key in ID]: KeyboardDesc }
+type IDDesc = { [key in ID]: AppEventDesc }
 
 
-export default function createKeyboardCustomPanel(keyboardEvents: KeyboardEvents, root: HTMLElement, onclose?: () => void) {
+export default function createKeyboardCustomPanel(keyboardEvents: AppEvents, root: HTMLElement, onclose?: () => void) {
 
   function addKeyboardDescElement(button: HTMLElement, category: Category, id: ID, key: string) {
     const str = `<span data-id="${id}" data-key="${key}" class="ehvp-custom-panel-item-value"><span>${key}</span><span class="ehvp-custom-btn ehvp-custom-btn-plain" style="padding:0;border:none;">&nbspx&nbsp</span></span>`;
@@ -48,10 +48,10 @@ export default function createKeyboardCustomPanel(keyboardEvents: KeyboardEvents
   </div>
   <div class="ehvp-custom-panel-container">
     <div class="ehvp-custom-panel-content">
-      ${Object.entries(keyboardEvents.inMain).map(([id]) => `
+      ${Object.entries(keyboardEvents.inMain).filter(entry => !entry[1].noKeyboard).map(([id]) => `
         <div class="ehvp-custom-panel-item">
          <div class="ehvp-custom-panel-item-title">
-           <span>${i18n.keyboard[id as KeyboardInMainId].get()}</span>
+           <span>${i18n.keyboard[id as AppEventIDInMain].get()}</span>
          </div>
          <div class="ehvp-custom-panel-item-values">
            <!-- wait element created from button event -->
@@ -61,10 +61,10 @@ export default function createKeyboardCustomPanel(keyboardEvents: KeyboardEvents
       `).join("")}
     </div>
     <div class="ehvp-custom-panel-content">
-      ${Object.entries(keyboardEvents.inFullViewGrid).map(([id]) => `
+      ${Object.entries(keyboardEvents.inFullViewGrid).filter(entry => !entry[1].noKeyboard).map(([id]) => `
         <div class="ehvp-custom-panel-item">
          <div class="ehvp-custom-panel-item-title">
-           <span>${i18n.keyboard[id as KeyboardInFullViewGridId].get()}</span>
+           <span>${i18n.keyboard[id as AppEventIDInFullViewGrid].get()}</span>
          </div>
          <div class="ehvp-custom-panel-item-values">
            <!-- wait element created from button event -->
@@ -74,10 +74,10 @@ export default function createKeyboardCustomPanel(keyboardEvents: KeyboardEvents
       `).join("")}
     </div>
     <div class="ehvp-custom-panel-content">
-      ${Object.entries(keyboardEvents.inBigImageMode).map(([id]) => `
+      ${Object.entries(keyboardEvents.inBigImageMode).filter(entry => !entry[1].noKeyboard).map(([id]) => `
         <div class="ehvp-custom-panel-item">
          <div class="ehvp-custom-panel-item-title">
-           <span>${i18n.keyboard[id as KeyboardInBigImageModeId].get()}</span>
+           <span>${i18n.keyboard[id as AppEventIDInBigImgFrame].get()}</span>
          </div>
          <div class="ehvp-custom-panel-item-values">
            <!-- wait element created from button event -->

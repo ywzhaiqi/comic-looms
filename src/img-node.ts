@@ -1,5 +1,4 @@
 import EBUS from "./event-bus";
-import { Tag } from "./filter";
 import { DownloadState } from "./img-fetcher";
 import { Debouncer } from "./utils/debouncer";
 import { resizing } from "./utils/image-resizing";
@@ -61,7 +60,7 @@ export default class ImageNode {
   picked: boolean = true;
   private debouncer: Debouncer = new Debouncer();
   rect?: Rect;
-  tags: Set<Tag>;
+  tags: Set<string>;
   actions: NodeAction[] = [];
 
   get originSrc() {
@@ -83,7 +82,7 @@ export default class ImageNode {
     this.originSrc = originSrc;
   }
 
-  setTags(...tags: Tag[]) {
+  setTags(...tags: string[]) {
     tags.forEach(t => this.tags.add(t));
   }
 
@@ -96,7 +95,7 @@ export default class ImageNode {
     }
   }
 
-  updateTagByPrefix(tag: Tag) {
+  updateTagByPrefix(tag: string) {
     if (this.tags.has(tag)) return;
     const prefix = tag.split(":").shift();
     if (!prefix) return;

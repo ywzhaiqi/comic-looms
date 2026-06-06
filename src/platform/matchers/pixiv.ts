@@ -10,6 +10,7 @@ import EBUS from "../../event-bus";
 import { ADAPTER } from "../adapt";
 import { i18n } from "../../utils/i18n";
 import { HTMLUgoiraElement } from "../../utils/ugoira";
+import { replaceHost } from "../../utils/url";
 
 type ArtistPIDs = {
   id?: string,
@@ -228,7 +229,7 @@ class PixivMatcher extends BaseMatcher<ArtistPIDs[]> {
   constructor() {
     super();
     this.meta = new GalleryMeta(window.location.href, "UNTITLE");
-    if (/pixiv.net(\/en\/)?$/.test(window.location.href)) {
+    if (/pixiv.net(\/en\/?|\/illustration)?$/.test(window.location.href)) {
       this.api = new PixivHomeAPI();
     } else {
       this.api = new PixivArtistWorksAPI();
@@ -242,10 +243,15 @@ class PixivMatcher extends BaseMatcher<ArtistPIDs[]> {
     if (!this.convertor) this.convertor = await new FFmpegConvertor().init();
     const promises = await zipReader.getEntries()
       .then(
-        entries =>
-          entries.map(e => e.getData?.(new zip_js.Uint8ArrayWriter())
-            .then(data => ({ name: e.filename, data }))
-          )
+        entries => {
+          const ret = [];
+          for (const entry of entries) {
+            if (entry.directory) continue;
+            ret.push(entry.getData(new zip_js.Uint8ArrayWriter())
+              .then(data => ({ name: entry.filename, data })));
+          }
+          return ret;
+        }
       );
     const files = await Promise.all(promises).then((entries => entries.filter(f => f && f.data.length > 0).map(f => f!)));
     if (files.length !== meta.body.frames.length) {
@@ -391,11 +397,11 @@ class PixivMatcher extends BaseMatcher<ArtistPIDs[]> {
         }
         j++;
         const node = new ImageNode(
-          this.changeImageServer(p.urls.small),
+          replaceHost(p.urls.small, ADAPTER.conf.pixivMirrorHost),
           `${window.location.origin}/artworks/${pid}`,
           title,
           undefined,
-          this.changeImageServer(p.urls.original),
+          replaceHost(p.urls.original, ADAPTER.conf.pixivMirrorHost),
           { w: p.width, h: p.height }
         );
         node.actions.push(actionLike);
@@ -416,35 +422,20 @@ class PixivMatcher extends BaseMatcher<ArtistPIDs[]> {
     const p = matches[2];
     if (this.works[pid]?.illustType === 2 || p === "ugoira") {
       const meta = await window.fetch(`https://www.pixiv.net/ajax/illust/${pid}/ugoira_meta?lang=en`).then(resp => resp.json()) as UgoiraMeta;
-      const original = this.changeImageServer(meta.body.src);
+      const original = replaceHost(meta.body.src, ADAPTER.conf.pixivMirrorHost);
       this.ugoiraMetas[original] = meta;
       return { url: original };
     } else {
       return { url: node.originSrc! };
     }
   }
-
-  changeImageServer(url: string): string {
-    let server = ADAPTER.conf.pixivImageServer;
-    if (server) {
-      if (!server.startsWith("http")) {
-        server = "https://" + server;
-      }
-      if (!server.endsWith("/")) {
-        server = server + "/";
-      }
-      return url.replace(/https?:\/\/[\.\w]*\//, server);
-    }
-    return url;
-  }
-
 }
 
 
 ADAPTER.addSetup({
   name: "Pixiv",
   workURLs: [
-    /pixiv.net\/(en\/)?(artworks\/.*|users\/.*|$)/
+    /pixiv.net\/(\w*\/|illustration)?(artworks\/.*|users\/.*|$)/
   ],
   match: ["https://www.pixiv.net/*"],
   constructor: () => {

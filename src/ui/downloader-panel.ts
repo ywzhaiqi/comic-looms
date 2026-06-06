@@ -248,12 +248,13 @@ export class DownloaderPanel {
 
     input.addEventListener("keypress", (event) => event.key === "Enter" && addCherryPick(false));
 
-    let lastIndex: number | undefined = 0;
+    let lastIndex: number = 0;
     EBUS.subscribe("add-cherry-pick-range", (chIndex, index, positive, shiftKey) => {
       const range = new CherryPickRange([index + 1, shiftKey ? (lastIndex ?? index) + 1 : index + 1], positive);
-      lastIndex = index;
+      if (!shiftKey) lastIndex = index;
       addRangeElements(this.cherryPickElement.firstElementChild as HTMLElement, onAdd(chIndex, range) || [], (id) => onRemove(chIndex, id));
     });
+    EBUS.subscribe("get-cherry-pick-last-index", () => lastIndex);
     EBUS.subscribe("pf-change-chapter", (index) => {
       if (index === -1) return;
       chapterIndex = index;
