@@ -770,7 +770,7 @@ export class BigImageFrameManager {
     switch (ADAPTER.conf.readMode) {
       case "pagination": {
         const rule = queryCSSRules(this.html.styleSheet, ".bifm-container-page");
-        newPercent = Math.max(newPercent, 100);
+        newPercent = Math.max(newPercent, 60);
         newPercent = Math.min(newPercent, 300);
         if (rule) rule.style.height = `${newPercent}%`;
         if (ADAPTER.conf.paginationIMGCount === 1) {
