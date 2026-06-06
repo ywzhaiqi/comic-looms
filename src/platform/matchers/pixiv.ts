@@ -246,7 +246,8 @@ class PixivMatcher extends BaseMatcher<ArtistPIDs[]> {
         entries => {
           const ret = [];
           for (const entry of entries) {
-            if (entry.directory) continue;
+              if (entry.directory) continue;
+              // @ts-ignore
             ret.push(entry.getData(new zip_js.Uint8ArrayWriter())
               .then(data => ({ name: entry.filename, data })));
           }

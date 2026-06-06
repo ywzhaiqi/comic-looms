@@ -7,8 +7,8 @@ export default defineConfig(({ command }) => {
   let downloadURL: string | undefined;
   let updateURL: string | undefined;
   if (command === 'build') {
-    downloadURL = 'https://github.com/MapoMagpie/comic-looms/releases/latest/download/comic-looms.user.js';
-    updateURL = 'https://github.com/MapoMagpie/comic-looms/releases/latest/download/comic-looms.meta.js';
+    downloadURL = 'https://github.com/ywzhaiqi/comic-looms/releases/latest/download/comic-looms.user.js';
+    updateURL = 'https://github.com/ywzhaiqi/comic-looms/releases/latest/download/comic-looms.meta.js';
   }
   return {
     define: {
