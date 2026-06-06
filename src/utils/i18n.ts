@@ -712,6 +712,12 @@ pero desactivará la lupa y la capacidad de arrastrar y mover imágenes.`,
     '압축 중...',
     'Empaquetando...'
   ],
+  downloadChapterProgress: [
+    'Chapter',
+    '第',
+    '챕터',
+    'Capítulo'
+  ],
   status: [
     'Status',
     '状态',

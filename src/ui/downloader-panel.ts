@@ -37,6 +37,7 @@ export class DownloaderPanel {
     this.noticeElement = q("#download-notice", root);
     this.forceBTN = q<HTMLAnchorElement>("#download-force", root);
     this.startBTN = q<HTMLAnchorElement>("#download-start", root);
+    this.progressElement = q("#download-progress", root);
     this.panel.addEventListener("transitionend", () => EBUS.emit("downloader-canvas-resize"));
   }
 
@@ -103,10 +104,19 @@ export class DownloaderPanel {
     this.normalizeBTN();
   }
 
+  progressElement: HTMLElement;
+
   flushUI(stage: "downloadFailed" | "downloaded" | "downloading" | "downloadStart" | "packaging") {
     this.startBTN.style.color = stage === "downloadFailed" ? "red" : "";
     this.startBTN.textContent = i18n[stage].get();
     this.btn.style.color = stage === "downloadFailed" ? "red" : "";
+    if (stage === "downloadStart" || stage === "downloaded" || stage === "downloadFailed") {
+      this.progressElement.textContent = "";
+    }
+  }
+
+  updateChapterProgress(current: number, total: number, title: string) {
+    this.progressElement.textContent = `${i18n.downloadChapterProgress.get()} ${current}/${total}: ${title}`;
   }
 
   noticeableBTN() {
@@ -285,6 +295,7 @@ export class DownloaderPanel {
     return `
 <div id="downloader-panel" class="p-panel p-downloader p-collapse">
     <div id="download-notice" class="download-notice" style="font-size: 0.7em;"></div>
+    <div id="download-progress" style="font-size: 0.8em; color: #333; padding: 0.3em; background-color: #f5f5f5; border-radius: 3px; margin-bottom: 0.3em;"></div>
     <div id="download-middle" class="download-middle">
       <div class="ehvp-tabs">
         <a id="download-tab-status" class="clickable ehvp-p-tab">${i18n.status.get()}</a>

@@ -173,8 +173,13 @@ export class Downloader {
     this.checkSelectedChapters();
     try {
       // when downloading, the page fetcher's changeChapter will only change the this.queue (IMGFetcherQueue)
-      for (const sel of this.selectedChapters) {
+      for (let i = 0; i < this.selectedChapters.length; i++) {
+        const sel = this.selectedChapters[i];
         if (!this.downloading) return;
+        // 更新章节进度显示
+        const currentChapter = this.pageFetcher.chapters[sel.index];
+        const chapterTitle = Array.isArray(currentChapter.title) ? currentChapter.title.join("_") : currentChapter.title;
+        this.panel.updateChapterProgress(i + 1, this.selectedChapters.length, chapterTitle);
         // the queue has been reset, IMGFetcherQueue.restore(chapter.queue)
         await this.pageFetcher.restoreChapter(sel.index);
         // reset img fetcher stage to url, if it's failed
