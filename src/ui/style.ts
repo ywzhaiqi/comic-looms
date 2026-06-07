@@ -976,6 +976,38 @@ export function styleCSS() {
 .ehvp-custom-btn:active {
   color: #ccc;
 }
+.ehvp-reading-record-prompt {
+  position: fixed;
+  z-index: 4002;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--ehvp-theme-bg-color);
+  color: var(--ehvp-theme-font-color);
+  padding: 1.5em 2em;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  font-weight: 700;
+  min-width: 20em;
+}
+.ehvp-reading-record-text {
+  display: block;
+  margin-bottom: 1em;
+  font-size: 1.1em;
+  line-height: 1.4em;
+}
+.ehvp-reading-record-btns {
+  display: flex;
+  justify-content: center;
+  gap: 1em;
+}
+.ehvp-reading-record-btns button {
+  padding: 0.4em 1.2em;
+  font-size: 1em;
+  cursor: pointer;
+  border-radius: 4px;
+}
 .ehvp-custom-panel-list-item-title {
   display: flex;
   justify-content: space-between;

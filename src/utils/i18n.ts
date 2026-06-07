@@ -368,6 +368,36 @@ pero desactivará la lupa y la capacidad de arrastrar y mover imágenes.`,
     '읽기 위치가 기록되었습니다. 이 위치에서 이어지는 새로운 장은 다음에 제공될 예정입니다.',
     'Posición de lectura registrada. La próxima vez se publicará un nuevo capítulo a partir de esta posición.'
   ],
+  recordReading: [
+    'Record Reading',
+    '记录阅读位置',
+    '읽기 기록',
+    'Registrar lectura'
+  ],
+  recordReadingTooltip: [
+    'When opening a gallery, show the last reading position and provide a button to continue reading.',
+    '打开画廊时，显示上次阅读位置并提供继续阅读按钮。',
+    '갤러리를 열 때 마지막 읽기 위치를 표시하고 계속 읽기 버튼을 제공합니다.',
+    'Al abrir una galería, mostrar la última posición de lectura y proporcionar un botón para continuar leyendo.'
+  ],
+  continueReading: [
+    'Continue',
+    '继续阅读',
+    '계속 읽기',
+    'Continuar'
+  ],
+  readFromStart: [
+    'From Start',
+    '从头开始',
+    '처음부터',
+    'Desde el inicio'
+  ],
+  lastReadPosition: [
+    'Last read: Chapter {{0}}, Page {{1}}',
+    '上次阅读至：第{{0}}章 第{{1}}页',
+    '마지막 읽기: {{0}}장 {{1}}페이지',
+    'Última lectura: Capítulo {{0}}, Página {{1}}'
+  ],
   pixivAscendWorks: [
     'Pixiv Ascending Works',
     'Pixiv 升序排列作品',

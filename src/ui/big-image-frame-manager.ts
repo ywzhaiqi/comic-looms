@@ -14,6 +14,7 @@ import { DEFAULT_THUMBNAIL } from "../img-node";
 import { ADAPTER } from "../platform/adapt";
 import { HTMLUgoiraElement } from "../utils/ugoira";
 import { SubData } from "../platform/platform";
+import { saveReadingRecord } from "../utils/reading-record";
 
 type MediaElement = HTMLImageElement | HTMLVideoElement | HTMLUgoiraElement;
 
@@ -41,15 +42,18 @@ export class BigImageFrameManager {
   lastMouse?: { x: number, y: number };
   pageNumInChapter: number[] = [];
   oriented: Oriented = "next";
-  // When bifm opens an image, the IntersectionObserver will immediately start detecting and rendering after 50 milliseconds, 
+  // When bifm opens an image, the IntersectionObserver will immediately start detecting and rendering after 50 milliseconds,
   // but we want to only start rendering when the corresponding image index is detected.
   intersectingIndexLock: boolean = false;
+  /** 获取当前画廊 URL，用于阅读记录存储 */
+  getGalleryUrl: () => string;
 
-  constructor(HTML: Elements, getChapter: (index: number) => Chapter) {
+  constructor(HTML: Elements, getChapter: (index: number) => Chapter, getGalleryUrl: () => string) {
     this.html = HTML;
     this.root = HTML.bigImageFrame;
     this.debouncer = new Debouncer();
     this.getChapter = getChapter;
+    this.getGalleryUrl = getGalleryUrl;
     this.scrollerY = new Scroller(this.root);
     this.scrollerX = new Scroller(this.root, undefined, "x");
 
@@ -358,6 +362,9 @@ export class BigImageFrameManager {
     this.renderingElements = [];
     this.intersectingIndexLock = false;
     this.nextChapterBtn.style.display = "none";
+    // 关闭大图时立即保存阅读记录
+    this.saveCurrentReadingRecord();
+    this.debouncer.addEvent("SAVE-READING-RECORD", () => { }, 0); // flush
   }
 
   show(imf: IMGFetcher) {
@@ -381,6 +388,25 @@ export class BigImageFrameManager {
     this.currLoadingState.clear();
     this.flushLoadingHelper();
     this.checkAndShowNextChapterButton();
+    this.saveCurrentReadingRecord();
+  }
+
+  /** 保存当前阅读记录到存储 */
+  saveCurrentReadingRecord() {
+    if (!ADAPTER.conf.recordReading) return;
+    const siteName = ADAPTER.matcher?.name;
+    const galleryUrl = this.getGalleryUrl();
+    if (!siteName || !galleryUrl) return;
+    const chapter = this.getChapter(this.chapterIndex);
+    const chapterTitle = typeof chapter.title === "string" ? chapter.title : chapter.title.join(" / ");
+    this.debouncer.addEvent("SAVE-READING-RECORD", () => {
+      saveReadingRecord(siteName, galleryUrl, {
+        chapterIndex: this.chapterIndex,
+        pageIndex: this.currentIndex,
+        timestamp: Date.now(),
+        chapterTitle,
+      });
+    }, 2000);
   }
 
   /**

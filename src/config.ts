@@ -117,6 +117,8 @@ export type Config = {
   autoEnterBig: boolean,
   /** Reading position recorded. A new chapter continuing from this position will be provided next time. */
   pixivRecordReading: boolean,
+  /** Record reading position for all sites, show prompt to continue reading next time */
+  recordReading: boolean,
   /** the aritst's works order, ascend true means old first */
   pixivAscendWorks: boolean,
   /** how to process ugoira */
@@ -192,6 +194,7 @@ export function defaultConf(): Config {
     magnifier: false,
     autoEnterBig: false,
     pixivRecordReading: false,
+    recordReading: true,
     pixivAscendWorks: false,
     pixivUgoiraMode: "ugoira",
     pixivMirrorHost: "",
@@ -383,6 +386,7 @@ export type ConfigBooleanType = "fetchOriginal"
   | "magnifier"
   | "autoEnterBig"
   | "pixivRecordReading"
+  | "recordReading"
   | "pixivAscendWorks"
   | "hdThumbnails"
   | "dragImageOut"
@@ -441,6 +445,7 @@ export const ConfigItems: ConfigItem[] = [
   { key: "hdThumbnails", typ: "boolean", gridColumnRange: [6, 11] },
   { key: "smartScrolling", typ: "boolean", gridColumnRange: [1, 11] },
   { key: "autoCollapsePanel", typ: "boolean", gridColumnRange: [1, 11] },
+  { key: "recordReading", typ: "boolean", gridColumnRange: [1, 6] },
   { key: "pixivRecordReading", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /pixiv.net/ },
   { key: "pixivAscendWorks", typ: "boolean", gridColumnRange: [1, 11], displayInSite: /pixiv.net/ },
   { key: "pixivMirrorHost", typ: "input", gridColumnRange: [1, 11], placeholder: "https://i.pixiv.re", displayInSite: /pixiv.net/ },

@@ -32,6 +32,13 @@ export function createHTML(filter: Filter) {
     <div class="page-loading-text border-ani">Loading...</div>
 </div>
 <div id="message-box" class="ehvp-message-box"></div>
+<div id="reading-record-prompt" class="ehvp-reading-record-prompt" style="display: none;">
+  <span id="reading-record-text" class="ehvp-reading-record-text"></span>
+  <div class="ehvp-reading-record-btns">
+    <button id="reading-record-continue" class="ehvp-custom-btn ehvp-custom-btn-green"></button>
+    <button id="reading-record-from-start" class="ehvp-custom-btn ehvp-custom-btn-plain"></button>
+  </div>
+</div>
 <div id="ehvp-nodes-container" class="full-view-grid" tabindex="6"></div>
 <div id="big-img-frame" class="big-img-frame big-img-frame-collapse" tabindex="7">
    <a id="img-land-left" class="img-land img-land-left"></a>
@@ -118,6 +125,10 @@ export function createHTML(filter: Filter) {
     autoPageBTN: q("#auto-page-btn", root),
     pageLoading: q("#page-loading", root),
     messageBox: q("#message-box", root),
+    readingRecordPrompt: q("#reading-record-prompt", root),
+    readingRecordText: q("#reading-record-text", root),
+    readingRecordContinue: q("#reading-record-continue", root),
+    readingRecordFromStart: q("#reading-record-from-start", root),
     config: new ConfigPanel(root),
     downloader: new DownloaderPanel(root),
     chapters: new ChaptersPanel(root),
