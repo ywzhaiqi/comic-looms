@@ -87,6 +87,17 @@ export class PageFetcher {
       }
     });
 
+    // 预加载下一章节
+    EBUS.subscribe("pf-preload-next-chapter", (chapterIndex) => {
+      const nextIndex = chapterIndex + 1;
+      if (nextIndex >= this.chapters.length) return;
+      const nextChapter = this.chapters[nextIndex];
+      // 如果下一章节已经有数据了，不需要预加载
+      if (nextChapter.filteredQueue.length > 0) return;
+      // 预加载下一章节的第一页数据
+      this.preloadChapterPages(nextIndex);
+    });
+
     EBUS.subscribe("filter-update-all-tags", async () => {
       const chapter = this.chapters[this.chapterIndex];
       const set = new Set<string>();
@@ -213,6 +224,45 @@ export class PageFetcher {
     while (true) {
       if (appendedCount + 60 < this.queue.length) break;
       if (!await this.appendNextPage()) break;
+    }
+  }
+
+  /**
+   * 预加载指定章节的页面数据（不触发视图更新）
+   * 用于在当前章节加载完成后，提前加载下一章节的内容
+   */
+  private async preloadChapterPages(chapterIndex: number): Promise<void> {
+    const chapter = this.chapters[chapterIndex];
+    if (!chapter.sourceIter) {
+      chapter.sourceIter = this.matcher.fetchPagesSource(chapter);
+    }
+    if (chapter.queue.length > 0) return; // 已经有数据了
+    try {
+      const first = await chapter.sourceIter.next();
+      if (first.value?.error) {
+        evLog("error", "preloadChapterPages error: ", first.value.error);
+        return;
+      }
+      if (first.value?.value) {
+        const nodes = await this.obtainImageNodeList(first.value.value, chapterIndex);
+        if (nodes.length === 0) return;
+        const len = chapter.filteredQueue.length;
+        const IFs = nodes.map(
+          (imgNode, index) => {
+            const imf = new IMGFetcher(index + len, imgNode, this.matcher, chapterIndex, chapter.id);
+            return imf;
+          }
+        );
+        chapter.queue.push(...IFs);
+        const filteredIFs = this.filter.filterNodes(IFs, false);
+        filteredIFs.forEach((node, i) => node.index = len + i);
+        chapter.filteredQueue.push(...filteredIFs);
+        // 预加载模式下，不调用 appendToView，避免触发视图更新
+        // 只将数据添加到队列中，但不显示
+        evLog("info", `preload chapter ${chapterIndex} (${chapter.title}) done, ${filteredIFs.length} images queued`);
+      }
+    } catch (error) {
+      evLog("error", "preloadChapterPages error: ", error);
     }
   }
 

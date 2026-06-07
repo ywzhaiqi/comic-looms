@@ -75,9 +75,13 @@ export class BigImageFrameManager {
 
     this.initEvent();
 
-    EBUS.subscribe("pf-on-appended", (_total, nodes, chapterIndex) => {
+    EBUS.subscribe("pf-on-appended", (_total, nodes, chapterIndex, done) => {
       if (chapterIndex !== this.chapterIndex) return;
       this.append(nodes);
+      // 本章加载完成后，预加载下一章节
+      if (done) {
+        this.preloadNextChapter();
+      }
     });
     EBUS.subscribe("pf-change-chapter", index => {
       this.chapterIndex = Math.max(0, index);
@@ -416,6 +420,17 @@ export class BigImageFrameManager {
   checkAndShowNextChapterButton() {
     const nextChapter = this.getChapter(this.chapterIndex + 1);
     this.nextChapterBtn.style.display = nextChapter ? "flex" : "none";
+  }
+
+  /**
+   * 本章加载完成后，预加载下一章节的页面数据
+   * 发送事件让 PageFetcher 预加载下一章节的图片信息
+   */
+  preloadNextChapter() {
+    const nextChapter = this.getChapter(this.chapterIndex + 1);
+    if (!nextChapter) return;
+    // 发送事件预加载下一章节的页面数据
+    EBUS.emit("pf-preload-next-chapter", this.chapterIndex);
   }
 
   append(nodes: IMGFetcher[]) {

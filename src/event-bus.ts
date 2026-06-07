@@ -45,6 +45,7 @@ export interface Events {
   "pf-update-chapters": (chapters: Chapter[], slient?: boolean) => void;
   "pf-change-chapter": (index: number, chapter: Chapter) => void;
   "pf-append-chapters": (url: string) => Promise<Chapter[]>;
+  "pf-preload-next-chapter": (chapterIndex: number) => void;
   "pf-try-extend": () => void;
   "pf-retry-extend": () => void;
   "pf-step-chapters": (oriented: Oriented) => void;
