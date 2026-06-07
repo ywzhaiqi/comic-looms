@@ -356,6 +356,28 @@ export function styleCSS() {
   font-weight: blod;
   left: 0px;
 }
+#bifm-next-chapter-btn {
+  position: fixed;
+  z-index: 3000;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  right: 20px;
+  bottom: 20px;
+  background-color: #007aff;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.2s, transform 0.2s;
+}
+#bifm-next-chapter-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
 .ehvp-root-collapse .big-img-frame {
   position: unset;
 }

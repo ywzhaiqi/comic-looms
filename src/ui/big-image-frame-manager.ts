@@ -33,6 +33,7 @@ export class BigImageFrameManager {
   chapterIndex: number = 0;
   getChapter: (index: number) => Chapter;
   loadingHelper: HTMLElement;
+  nextChapterBtn: HTMLElement;
   currLoadingState: Map<number, number> = new Map();
 
   scrollerY: Scroller;
@@ -77,6 +78,7 @@ export class BigImageFrameManager {
     EBUS.subscribe("pf-change-chapter", index => {
       this.chapterIndex = Math.max(0, index);
       this.container.innerHTML = "";
+      this.nextChapterBtn.style.display = "none";
     });
 
     EBUS.subscribe("imf-on-click", (imf) => this.show(imf));
@@ -99,6 +101,17 @@ export class BigImageFrameManager {
     this.loadingHelper = document.createElement("span");
     this.loadingHelper.id = "bifm-loading-helper";
     this.root.appendChild(this.loadingHelper);
+
+    // 创建"下一章"按钮
+    this.nextChapterBtn = document.createElement("div");
+    this.nextChapterBtn.id = "bifm-next-chapter-btn";
+    this.nextChapterBtn.classList.add("bifm-next-chapter-btn");
+    this.nextChapterBtn.innerHTML = `<span>Next Chapter</span>`;
+    this.nextChapterBtn.style.display = "none";
+    this.nextChapterBtn.addEventListener("click", () => {
+      EBUS.emit("pf-step-chapters", "next");
+    });
+    this.root.appendChild(this.nextChapterBtn);
 
     EBUS.subscribe("imf-download-state-change", (imf) => {
       if (imf.chapterIndex !== this.chapterIndex) return;
@@ -344,6 +357,7 @@ export class BigImageFrameManager {
     this.renderingElements.forEach(elem => elem.innerHTML = "");
     this.renderingElements = [];
     this.intersectingIndexLock = false;
+    this.nextChapterBtn.style.display = "none";
   }
 
   show(imf: IMGFetcher) {
@@ -366,6 +380,16 @@ export class BigImageFrameManager {
     this.lastMouse = undefined;
     this.currLoadingState.clear();
     this.flushLoadingHelper();
+    this.checkAndShowNextChapterButton();
+  }
+
+  /**
+   * 检查是否应该显示"下一章"按钮
+   * 只要有下一章节就显示按钮
+   */
+  checkAndShowNextChapterButton() {
+    const nextChapter = this.getChapter(this.chapterIndex + 1);
+    this.nextChapterBtn.style.display = nextChapter ? "flex" : "none";
   }
 
   append(nodes: IMGFetcher[]) {
@@ -509,6 +533,7 @@ export class BigImageFrameManager {
         if (element.firstElementChild) {
           this.tryPlayVideo(element.firstElementChild as HTMLElement);
         }
+        this.checkAndShowNextChapterButton();
         break;
       }
     }
